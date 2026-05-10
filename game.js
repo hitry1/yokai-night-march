@@ -12,12 +12,13 @@ let _eid=0;
 
 /* ─── HIGH SCORES (localStorage) ─── */
 const HS_KEY="yokai_highscores";
-function loadScores(){try{return JSON.parse(localStorage.getItem(HS_KEY))||[]}catch{return[]}}
+function loadScores(){try{const d=localStorage.getItem(HS_KEY);return d?JSON.parse(d):[]}catch(e){return[]}}
 function saveScore(entry){
-  const arr=loadScores();arr.push(entry);
-  arr.sort((a,b)=>b.time-a.time||b.kills-a.kills);
+  const arr=loadScores();const prevBest=arr.length>0?arr[0].time:-1;
+  arr.push(entry);arr.sort((a,b)=>b.time-a.time||b.kills-a.kills);
   if(arr.length>10)arr.length=10;
-  localStorage.setItem(HS_KEY,JSON.stringify(arr))}
+  try{localStorage.setItem(HS_KEY,JSON.stringify(arr))}catch(e){}
+  return entry.time>prevBest}
 function showBestRecord(){
   const el=document.getElementById("best-record");if(!el)return;
   const arr=loadScores();
@@ -221,6 +222,12 @@ class Game{
     $("btn-start").onclick=()=>this._startGame();
     $("btn-resume").onclick=()=>this._unpause();
     $("btn-retry").onclick=()=>{showBestRecord();this._startGame()};
+    this.ui.soundBtn=$("btn-sound");
+    this.ui.soundBtn.onclick=()=>{this.sfx.on=!this.sfx.on;
+      if(!this.sfx.on)this.sfx.bgmStop();
+      else if(this.state==="play"){this.sfx.init();this.sfx.resume();this.sfx.bgmStart()}
+      this.ui.soundBtn.textContent=this.sfx.on?"🔊":"🔇";
+      this.ui.soundBtn.setAttribute("aria-label",this.sfx.on?"음소거":"소리 켜기")};
   }
 
   /* ── INPUT ── */
@@ -231,12 +238,14 @@ class Game{
     window.addEventListener("keyup",e=>{this.keys[e.code]=false});
     const jz=this.ui.joyZone;let tId=null,ox=0,oy=0;
     jz.addEventListener("touchstart",e=>{e.preventDefault();this.sfx.resume();
-      const t=e.changedTouches[0];tId=t.identifier;ox=t.clientX;oy=t.clientY;this.touch.active=true},{passive:false});
+      const t=e.changedTouches[0];tId=t.identifier;ox=t.clientX;oy=t.clientY;
+      this.touch.active=true;this.touch.ox=ox;this.touch.oy=oy;this.touch.kx=0;this.touch.ky=0},{passive:false});
     jz.addEventListener("touchmove",e=>{e.preventDefault();for(const t of e.changedTouches){
       if(t.identifier===tId){const dx=t.clientX-ox,dy=t.clientY-oy,d=sqrt(dx*dx+dy*dy),mR=60;
-        if(d>mR){this.touch.dx=dx/d;this.touch.dy=dy/d}else{this.touch.dx=dx/mR;this.touch.dy=dy/mR}}}},{passive:false});
+        if(d>mR){this.touch.dx=dx/d;this.touch.dy=dy/d}else{this.touch.dx=dx/mR;this.touch.dy=dy/mR}
+        this.touch.kx=clamp(dx,-mR,mR);this.touch.ky=clamp(dy,-mR,mR)}}},{passive:false});
     const onEnd=e=>{for(const t of e.changedTouches){
-      if(t.identifier===tId){tId=null;this.touch.active=false;this.touch.dx=0;this.touch.dy=0}}};
+      if(t.identifier===tId){tId=null;this.touch.active=false;this.touch.dx=0;this.touch.dy=0;this.touch.kx=0;this.touch.ky=0}}};
     jz.addEventListener("touchend",onEnd);jz.addEventListener("touchcancel",onEnd);
     this.cvs.addEventListener("touchstart",e=>{e.preventDefault();this.sfx.resume()},{passive:false});
   }
@@ -555,11 +564,17 @@ class Game{
       /* death */
       if(e.hp<=0){this._onEnemyKill(e);this.enemies.splice(i,1)}
     }
-    /* separation */
-    for(let i=0;i<this.enemies.length;i++)for(let j=i+1;j<this.enemies.length;j++){
-      const a=this.enemies[i],b=this.enemies[j],d=dist(a,b),md=a.r+b.r;
-      if(d<md&&d>0){const ov=(md-d)/2,nx=(b.x-a.x)/d,ny=(b.y-a.y)/d;
-        a.x-=nx*ov*.5;a.y-=ny*ov*.5;b.x+=nx*ov*.5;b.y+=ny*ov*.5}}
+    /* separation (spatial hash — O(n) average vs O(n²)) */
+    {const cs=40,grid=new Map();
+    for(const e of this.enemies){const k=(floor(e.x/cs)<<16)^floor(e.y/cs);
+      const cell=grid.get(k);if(cell)cell.push(e);else grid.set(k,[e])}
+    for(const e of this.enemies){const gx=floor(e.x/cs),gy=floor(e.y/cs);
+      for(let dx=-1;dx<=1;dx++)for(let dy=-1;dy<=1;dy++){
+        const k=((gx+dx)<<16)^(gy+dy),cell=grid.get(k);if(!cell)continue;
+        for(const o of cell){if(o.id<=e.id)continue;
+          const d=dist(e,o),md=e.r+o.r;
+          if(d<md&&d>0){const ov=(md-d)/2,nx=(o.x-e.x)/d,ny=(o.y-e.y)/d;
+            e.x-=nx*ov*.5;e.y-=ny*ov*.5;o.x+=nx*ov*.5;o.y+=ny*ov*.5}}}}}
   }
 
   /* ── AI: simple chase ── */
@@ -773,11 +788,11 @@ class Game{
   /* ── END ── */
   _gameOver(){this.state="end";this.sfx.bgmStop();this.ui.endTitle.textContent="게임 오버";
     this.ui.endTitle.style.color="#ef5350";
-    saveScore({time:this.elapsed,kills:this.killCount,level:this.level,dmg:this.totalDmg,win:false,date:Date.now()});
+    this.isNewRecord=saveScore({time:this.elapsed,kills:this.killCount,level:this.level,dmg:this.totalDmg,win:false,date:Date.now()});
     this._showEndStats();this.ui.end.classList.remove("hidden")}
   _victory(){this.state="end";this.sfx.bgmStop();this.sfx.win();this.ui.endTitle.textContent="🎉 퇴마 완료!";
     this.ui.endTitle.style.color="#ffd93d";
-    saveScore({time:this.elapsed,kills:this.killCount,level:this.level,dmg:this.totalDmg,win:true,date:Date.now()});
+    this.isNewRecord=saveScore({time:this.elapsed,kills:this.killCount,level:this.level,dmg:this.totalDmg,win:true,date:Date.now()});
     this._showEndStats();this.ui.end.classList.remove("hidden")}
   _showEndStats(){
     const box=this.ui.endStats;while(box.firstChild)box.removeChild(box.firstChild);
@@ -790,8 +805,7 @@ class Game{
       const b=document.createElement("span");b.textContent=v;
       row.append(a,b);box.appendChild(row)}
     /* new record check */
-    const scores=loadScores();
-    if(scores.length>0&&scores[0].date===scores[scores.length>1?scores.length-1:0].date){
+    if(this.isNewRecord){
       const nr=document.createElement("div");nr.className="new-record";nr.textContent="🏆 NEW RECORD!";
       box.insertBefore(nr,box.firstChild)}
   }
@@ -1011,7 +1025,17 @@ class Game{
     c.globalAlpha=1;
 
     /* ── minimap ── */
-    this._renderMinimap(c)}
+    this._renderMinimap(c);
+
+    /* ── mobile joystick visual ── */
+    if(this.isMobile&&this.touch.active){
+      const jx=this.touch.ox,jy=this.touch.oy;
+      c.save();c.globalAlpha=.2;c.strokeStyle="#fff";c.lineWidth=2;
+      c.beginPath();c.arc(jx,jy,60,0,TAU);c.stroke();
+      c.globalAlpha=.15;c.fillStyle="#fff";c.beginPath();c.arc(jx,jy,60,0,TAU);c.fill();
+      c.globalAlpha=.45;c.fillStyle="#ffd54f";
+      c.beginPath();c.arc(jx+(this.touch.kx||0),jy+(this.touch.ky||0),16,0,TAU);c.fill();
+      c.restore()}}
 
   _renderMinimap(c){
     const mw=100,mh=100,mx=this.sw-mw-12,my=this.sh-mh-12,sx=mw/W,sy=mh/H;
