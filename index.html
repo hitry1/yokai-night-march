@@ -29,20 +29,76 @@
     <div id="hud-info">
       <span id="timer">00:00</span>
       <span id="kills">0 KILLS</span>
+      <span id="hud-gold">💰 0</span>
+      <span id="diff-badge"></span>
     </div>
     <div id="weapon-slots"></div>
     <button id="btn-sound" class="sound-btn" aria-label="음소거">🔊</button>
   </div>
 
-  <!-- Start -->
-  <div id="screen-start" class="ov">
+  <!-- Main Menu -->
+  <div id="screen-menu" class="ov">
     <div class="ov-box">
       <h1 class="title">요괴야행</h1>
       <p class="subtitle">YOKAI NIGHT MARCH</p>
       <p class="tagline">10분을 살아남아라</p>
       <div id="best-record" class="best-record"></div>
-      <button id="btn-start" class="btn">게임 시작</button>
-      <p class="hint">이동: WASD / 방향키 / 터치&nbsp;&nbsp;|&nbsp;&nbsp;무기 자동 공격&nbsp;&nbsp;|&nbsp;&nbsp;일시정지: ESC</p>
+      <div id="menu-gold" class="menu-gold">💰 0</div>
+      <button id="btn-play" class="btn btn-primary">게임 시작</button>
+      <div class="menu-btns">
+        <button id="btn-shop" class="btn btn-secondary">🏪 영구 강화</button>
+        <button id="btn-settings" class="btn btn-secondary">⚙️ 설정</button>
+      </div>
+      <p class="hint">이동: WASD / 방향키 / 터치 | 무기 자동 공격 | 일시정지: ESC</p>
+    </div>
+  </div>
+
+  <!-- Character Select -->
+  <div id="screen-chars" class="ov hidden">
+    <div class="ov-box wide-box">
+      <h2 class="screen-title">캐릭터 선택</h2>
+      <p class="screen-subtitle">클릭하여 게임을 시작하세요</p>
+      <div id="char-list" class="char-list"></div>
+      <button id="btn-back-chars" class="btn btn-secondary">← 돌아가기</button>
+    </div>
+  </div>
+
+  <!-- Shop (Meta Upgrades) -->
+  <div id="screen-shop" class="ov hidden">
+    <div class="ov-box wide-box">
+      <h2 class="screen-title">🏪 영구 강화</h2>
+      <div id="shop-gold" class="shop-gold-display">💰 0</div>
+      <p class="screen-subtitle">골드로 영구 능력치를 강화하세요</p>
+      <div id="shop-list" class="shop-list"></div>
+      <button id="btn-back-shop" class="btn btn-secondary">← 돌아가기</button>
+    </div>
+  </div>
+
+  <!-- Settings -->
+  <div id="screen-settings" class="ov hidden">
+    <div class="ov-box">
+      <h2 class="screen-title">⚙️ 설정</h2>
+      <div class="settings-content">
+        <div class="setting-row">
+          <label for="sfx-vol">효과음</label>
+          <input type="range" id="sfx-vol" min="0" max="100" value="50">
+          <span id="sfx-val" class="vol-val">50%</span>
+        </div>
+        <div class="setting-row">
+          <label for="bgm-vol">배경음</label>
+          <input type="range" id="bgm-vol" min="0" max="100" value="30">
+          <span id="bgm-val" class="vol-val">30%</span>
+        </div>
+        <div class="setting-row">
+          <label for="diff-select">난이도</label>
+          <select id="diff-select">
+            <option value="easy">🟢 쉬움</option>
+            <option value="normal" selected>🟡 보통</option>
+            <option value="hard">🔴 어려움</option>
+          </select>
+        </div>
+      </div>
+      <button id="btn-back-settings" class="btn btn-secondary">← 저장 후 돌아가기</button>
     </div>
   </div>
 
@@ -58,7 +114,7 @@
   <div id="screen-pause" class="ov hidden">
     <div class="ov-box">
       <h2>일시정지</h2>
-      <button id="btn-resume" class="btn">계속하기</button>
+      <button id="btn-resume" class="btn btn-primary">계속하기</button>
       <p class="hint">ESC / P 로 토글</p>
     </div>
   </div>
@@ -68,9 +124,16 @@
     <div class="ov-box">
       <h2 id="end-title">게임 오버</h2>
       <div id="end-stats"></div>
-      <button id="btn-retry" class="btn">다시 하기</button>
+      <div id="gold-earned" class="gold-earned"></div>
+      <div class="end-btns">
+        <button id="btn-retry" class="btn btn-primary">다시 하기</button>
+        <button id="btn-to-menu" class="btn btn-secondary">메뉴로</button>
+      </div>
     </div>
   </div>
+
+  <!-- Announcements (rendered by canvas, no DOM element needed) -->
+  <div id="announce-bar" class="hidden"></div>
 
   <!-- Mobile Joystick -->
   <div id="joy-zone" class="hidden"></div>
