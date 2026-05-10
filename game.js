@@ -776,6 +776,7 @@ class Game {
   /* ── START GAME ── */
   _startGame() {
     this.sfx.init(); this.sfx.resume(); this.sfx.bgmStart(); _eid = 0;
+    this._prevUnlocks = [...this.unlocks.characters]; // snapshot before run
     const cx = W / 2, cy = H / 2;
     const ch = CHARACTERS[this.selectedChar];
     const diff = DIFFICULTIES[this.settings.difficulty] || DIFFICULTIES.normal;
@@ -808,7 +809,7 @@ class Game {
 
     this.p = {
       x: cx, y: cy, r: 13, spd, hp, maxHp: hp,
-      armor, magnetR, cdMul, xpMul, dmgMul, regen,
+      armor, magnetR, cdMul, xpMul, dmgMul, baseDmgMul: dmgMul, regen,
       invT: 0, flashT: 0, facing: 0,
     };
     this.cam = { x: cx - this.sw / 2, y: cy - this.sh / 2 };
@@ -888,7 +889,7 @@ class Game {
     /* fox spirit passive: low HP boost */
     if (this.charPassive === "lowHpBoost") {
       const hpRatio = this.p.hp / this.p.maxHp;
-      this.p.dmgMul = CHARACTERS.foxSpirit.dmgMul * (1 + (1 - hpRatio) * 0.8);
+      this.p.dmgMul = this.p.baseDmgMul * (1 + (1 - hpRatio) * 0.8);
     }
 
     /* spawn */
@@ -1537,14 +1538,10 @@ class Game {
     if (def) {
       const goldAmt = rInt(def.goldMin || 0, def.goldMax || 0);
       if (goldAmt > 0) {
-        for (let j = 0; j < min(goldAmt, 5); j++) {
-          const val = j === 0 ? goldAmt : 0; // first coin carries all value, rest are visual
-          if (j > 0) continue; // only spawn one coin with the value
-          this.goldCoins.push({
-            x: e.x + rand(-12, 12), y: e.y + rand(-12, 12),
-            val: goldAmt, r: 5, life: 8, attracting: false,
-          });
-        }
+        this.goldCoins.push({
+          x: e.x + rand(-12, 12), y: e.y + rand(-12, 12),
+          val: goldAmt, r: 5, life: 8, attracting: false,
+        });
       }
     }
 
@@ -1907,10 +1904,19 @@ class Game {
 
     /* new unlock notification */
     const newUnlocks = [];
+    const prev = this._prevUnlocks || ["exorcist", "shaman"];
     for (const [id, ch] of Object.entries(CHARACTERS)) {
-      if (this.unlocks.characters.includes(id) && !["exorcist", "shaman"].includes(id)) {
-        /* check if just unlocked (simple heuristic: if it was in the list before this run it's not new) */
+      if (this.unlocks.characters.includes(id) && !prev.includes(id)) {
+        newUnlocks.push(ch);
       }
+    }
+    if (newUnlocks.length > 0) {
+      const unlockDiv = document.createElement("div");
+      unlockDiv.className = "unlock-notification";
+      unlockDiv.innerHTML = "🔓 <b>새 캐릭터 해금!</b><br>" +
+        newUnlocks.map(c => c.icon + " " + c.name).join(", ");
+      unlockDiv.style.cssText = "margin-top:12px;padding:10px;background:rgba(255,215,0,.15);border:1px solid #ffd93d;border-radius:8px;color:#ffd93d;text-align:center;font-size:15px;";
+      box.appendChild(unlockDiv);
     }
   }
 

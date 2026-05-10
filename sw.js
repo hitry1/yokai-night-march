@@ -1,11 +1,13 @@
 /* Service Worker — Yokai Night March (요괴야행) */
-const CACHE_NAME = "yokai-v1";
+const CACHE_NAME = "yokai-v2";
 const ASSETS = [
   "/",
   "/index.html",
   "/styles.css",
   "/game.js",
   "/manifest.json",
+  "/icon-192.png",
+  "/icon-512.png",
 ];
 
 self.addEventListener("install", (e) => {
