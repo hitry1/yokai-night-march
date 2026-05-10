@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no,viewport-fit=cover">
+  <title>다크 서바이버 | Dark Survivor</title>
+  <meta name="description" content="뱀파이어 서바이버즈 스타일 로그라이크 서바이벌 게임. 15분을 살아남아라.">
+  <meta name="theme-color" content="#0a0a1a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <canvas id="gc"></canvas>
+
+  <!-- HUD -->
+  <div id="hud" class="hidden">
+    <div id="hud-top">
+      <div class="bar-wrap" id="hp-wrap">
+        <div class="bar-fill" id="hp-bar"></div>
+        <span class="bar-label" id="hp-txt">100 / 100</span>
+      </div>
+      <div class="bar-wrap" id="xp-wrap">
+        <div class="bar-fill" id="xp-bar"></div>
+        <span class="bar-label" id="lv-txt">Lv 1</span>
+      </div>
+    </div>
+    <div id="hud-info">
+      <span id="timer">00:00</span>
+      <span id="kills">0 KILLS</span>
+    </div>
+    <div id="weapon-slots"></div>
+  </div>
+
+  <!-- Start -->
+  <div id="screen-start" class="ov">
+    <div class="ov-box">
+      <h1 class="title">다크 서바이버</h1>
+      <p class="subtitle">DARK SURVIVOR</p>
+      <p class="tagline">15분을 살아남아라</p>
+      <button id="btn-start" class="btn">게임 시작</button>
+      <p class="hint">이동: WASD / 방향키 / 터치&nbsp;&nbsp;|&nbsp;&nbsp;무기 자동 공격</p>
+    </div>
+  </div>
+
+  <!-- Level Up -->
+  <div id="screen-lvl" class="ov hidden">
+    <div class="ov-box">
+      <h2 class="lvl-title">레벨 업!</h2>
+      <div id="choices"></div>
+    </div>
+  </div>
+
+  <!-- Pause -->
+  <div id="screen-pause" class="ov hidden">
+    <div class="ov-box">
+      <h2>일시정지</h2>
+      <button id="btn-resume" class="btn">계속하기</button>
+      <p class="hint">ESC / P 로 토글</p>
+    </div>
+  </div>
+
+  <!-- Game Over / Victory -->
+  <div id="screen-end" class="ov hidden">
+    <div class="ov-box">
+      <h2 id="end-title">게임 오버</h2>
+      <div id="end-stats"></div>
+      <button id="btn-retry" class="btn">다시 하기</button>
+    </div>
+  </div>
+
+  <!-- Mobile Joystick -->
+  <div id="joy-zone" class="hidden"></div>
+
+  <script src="game.js"></script>
+</body>
+</html>
