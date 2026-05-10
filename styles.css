@@ -67,6 +67,18 @@ html,body{width:100%;height:100%;overflow:hidden;background:#0a0a1a;
 .stat-row span:first-child{color:rgba(255,255,255,.5)}
 #end-title{font-size:1.8rem;font-weight:800;margin-bottom:8px}
 
+/* ── best record ── */
+.best-record{font-size:.82rem;color:rgba(255,217,61,.6);margin-bottom:16px;
+  font-variant-numeric:tabular-nums;letter-spacing:.03em}
+.new-record{font-size:1.1rem;font-weight:800;color:#ffd93d;margin-bottom:12px;
+  text-shadow:0 0 20px rgba(255,217,61,.5);animation:recordPulse 1s ease-in-out infinite}
+@keyframes recordPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}
+
+/* synth card glow */
+.choice-card.synth{border-color:#ffd93d;background:rgba(255,217,61,.08);
+  box-shadow:0 0 20px rgba(255,217,61,.15)}
+.choice-card.synth:hover{border-color:#ffab00;background:rgba(255,171,0,.15)}
+
 /* ── joystick ── */
 #joy-zone{position:fixed;left:0;bottom:0;width:50%;height:50%;z-index:60}
 

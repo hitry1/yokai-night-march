@@ -10,6 +10,21 @@
 const W=4000, H=4000, SURVIVE=600, BOSS_TIME=300;
 let _eid=0;
 
+/* ─── HIGH SCORES (localStorage) ─── */
+const HS_KEY="yokai_highscores";
+function loadScores(){try{return JSON.parse(localStorage.getItem(HS_KEY))||[]}catch{return[]}}
+function saveScore(entry){
+  const arr=loadScores();arr.push(entry);
+  arr.sort((a,b)=>b.time-a.time||b.kills-a.kills);
+  if(arr.length>10)arr.length=10;
+  localStorage.setItem(HS_KEY,JSON.stringify(arr))}
+function showBestRecord(){
+  const el=document.getElementById("best-record");if(!el)return;
+  const arr=loadScores();
+  if(!arr.length){el.textContent="";return}
+  const b=arr[0],m=Math.floor(b.time/60),s=Math.floor(b.time%60);
+  el.textContent=`최고 기록: ${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")} | ${b.kills} KILLS | Lv ${b.level}`}
+
 /* ─── AUDIO ─── */
 class Sfx{
   constructor(){this.ac=null;this.g=null;this.on=true}
@@ -40,6 +55,15 @@ class Sfx{
     setTimeout(()=>this._t(.3,600,1400,"sine",.12),300)}
   talisman(){this._t(.12,600,1200,"sine",.1)}
   allure(){this._t(.3,300,150,"sine",.08)}
+  /* procedural BGM */
+  bgmStart(){if(!this.ac||this.bgmPlaying)return;this.bgmPlaying=true;
+    const notes=[196,220,262,294,330,294,262,220];let idx=0;
+    const playNote=()=>{if(!this.bgmPlaying||!this.on)return;
+      const f=notes[idx%notes.length];this._t(.35,f,f*.998,"sine",.035);
+      this._t(.35,f*1.5,f*1.498,"triangle",.018);
+      idx++;this.bgmTimer=setTimeout(playNote,450)};
+    playNote()}
+  bgmStop(){this.bgmPlaying=false;if(this.bgmTimer)clearTimeout(this.bgmTimer)}
   wpn(t){
     if(t==="blade"||t==="ghostSlash")this._t(.04,320,200,"sawtooth",.06);
     else if(t==="fire"||t==="ghostFlame")this._n(.06,1100,.08);
@@ -181,6 +205,7 @@ class Game{
     window.addEventListener("resize",()=>this._resize());
     document.addEventListener("visibilitychange",()=>{
       if(document.hidden&&this.state==="play")this._pause()});
+    showBestRecord();
     this._raf();
   }
 
@@ -195,7 +220,7 @@ class Game{
       joyZone:$("joy-zone")};
     $("btn-start").onclick=()=>this._startGame();
     $("btn-resume").onclick=()=>this._unpause();
-    $("btn-retry").onclick=()=>this._startGame();
+    $("btn-retry").onclick=()=>{showBestRecord();this._startGame()};
   }
 
   /* ── INPUT ── */
@@ -222,7 +247,7 @@ class Game{
 
   /* ── START ── */
   _startGame(){
-    this.sfx.init();this.sfx.resume();_eid=0;
+    this.sfx.init();this.sfx.resume();this.sfx.bgmStart();_eid=0;
     const cx=W/2,cy=H/2;
     this.p={x:cx,y:cy,r:13,spd:2.8,hp:100,maxHp:100,
       armor:0,magnetR:80,cdMul:1,xpMul:1,regen:0,invT:0,flashT:0,facing:0};
@@ -746,10 +771,14 @@ class Game{
   }
 
   /* ── END ── */
-  _gameOver(){this.state="end";this.ui.endTitle.textContent="게임 오버";
-    this.ui.endTitle.style.color="#ef5350";this._showEndStats();this.ui.end.classList.remove("hidden")}
-  _victory(){this.state="end";this.sfx.win();this.ui.endTitle.textContent="🎉 퇴마 완료!";
-    this.ui.endTitle.style.color="#ffd93d";this._showEndStats();this.ui.end.classList.remove("hidden")}
+  _gameOver(){this.state="end";this.sfx.bgmStop();this.ui.endTitle.textContent="게임 오버";
+    this.ui.endTitle.style.color="#ef5350";
+    saveScore({time:this.elapsed,kills:this.killCount,level:this.level,dmg:this.totalDmg,win:false,date:Date.now()});
+    this._showEndStats();this.ui.end.classList.remove("hidden")}
+  _victory(){this.state="end";this.sfx.bgmStop();this.sfx.win();this.ui.endTitle.textContent="🎉 퇴마 완료!";
+    this.ui.endTitle.style.color="#ffd93d";
+    saveScore({time:this.elapsed,kills:this.killCount,level:this.level,dmg:this.totalDmg,win:true,date:Date.now()});
+    this._showEndStats();this.ui.end.classList.remove("hidden")}
   _showEndStats(){
     const box=this.ui.endStats;while(box.firstChild)box.removeChild(box.firstChild);
     const m=floor(this.elapsed/60),s=floor(this.elapsed%60);
@@ -760,6 +789,11 @@ class Game{
       const a=document.createElement("span");a.textContent=k;
       const b=document.createElement("span");b.textContent=v;
       row.append(a,b);box.appendChild(row)}
+    /* new record check */
+    const scores=loadScores();
+    if(scores.length>0&&scores[0].date===scores[scores.length>1?scores.length-1:0].date){
+      const nr=document.createElement("div");nr.className="new-record";nr.textContent="🏆 NEW RECORD!";
+      box.insertBefore(nr,box.firstChild)}
   }
 
   /* ── FX ── */
