@@ -1,5 +1,5 @@
 /* ================================================================
-   요괴야행 (Yokai Night March) v2.1
+   요괴야행 (Yokai Night March) v3.0
    Korean-mythology Vampire-Survivors roguelike
    Pure vanilla JS · HTML5 Canvas · Zero dependencies
 
@@ -66,13 +66,14 @@ function loadCStats() {
     totalKills: 0, totalGold: 0, totalRuns: 0, totalTime: 0,
     totalDmg: 0, gamesWon: 0, bossKills: 0, evolvedWeapons: [],
     maxSurvivalTime: 0, highestLevel: 0,
+    nightmareMaxTime: 0, seaCleared: 0,
   });
 }
 function saveCStats(v) { _save(KEYS.stats, v); }
 
 /* settings */
 function loadSettings() {
-  return _load(KEYS.settings, { sfxVol: 50, bgmVol: 30, difficulty: "normal", joySens: 100 });
+  return _load(KEYS.settings, { sfxVol: 50, bgmVol: 30, difficulty: "normal", joySens: 100, map: "bamboo" });
 }
 function saveSettings(v) { _save(KEYS.settings, v); }
 
@@ -164,6 +165,9 @@ class Sfx {
     else if (t === "aura") this._t(0.06, 160, 260, "sine", 0.04);
     else if (t === "beads" || t === "divineWind") this._t(0.05, 700, 1100, "sine", 0.05);
     else if (t === "windSpirit") this._n(0.08, 600, 0.07);
+    else if (t === "scythe" || t === "deathQuake") this._t(0.08, 180, 80, "sawtooth", 0.1);
+    else if (t === "quake") { this._n(0.12, 200, 0.14); this._t(0.08, 60, 30, "square", 0.08); }
+    else if (t === "trident" || t === "tidalStorm") this._t(0.06, 500, 900, "triangle", 0.08);
   }
 
   bgmStart() {
@@ -249,6 +253,33 @@ const CHARACTERS = {
     unlockDesc: "구미호 보스 처치",
     unlockCheck: (s) => s.bossKills >= 1,
   },
+  reaper: {
+    name: "저승사자", desc: "처치 시 일정 확률로 즉사 효과. 사신낫으로 시작",
+    icon: "💀", startWeapon: "scythe",
+    hp: 85, spd: 3.2, armor: 1, magnetR: 70,
+    dmgMul: 1.1, cdMul: 0.9, xpMul: 0.85,
+    passive: "executeChance", unlocked: false,
+    unlockDesc: "악몽 난이도 3분 생존",
+    unlockCheck: (s) => s.nightmareMaxTime >= 180,
+  },
+  mountainGod: {
+    name: "산신령", desc: "시간 경과에 따라 점점 강해진다. 지진파로 시작",
+    icon: "⛰️", startWeapon: "quake",
+    hp: 130, spd: 2.2, armor: 4, magnetR: 60,
+    dmgMul: 0.8, cdMul: 1.15, xpMul: 1,
+    passive: "growingPower", unlocked: false,
+    unlockDesc: "누적 1000 처치 달성",
+    unlockCheck: (s) => s.totalKills >= 1000,
+  },
+  seaDiver: {
+    name: "해녀", desc: "물 근처에서 능력 강화. 해류창으로 시작",
+    icon: "🧜", startWeapon: "trident",
+    hp: 90, spd: 2.9, armor: 0, magnetR: 120,
+    dmgMul: 1.05, cdMul: 1, xpMul: 1.15,
+    passive: "waterAffinity", unlocked: false,
+    unlockDesc: "바다 맵에서 클리어",
+    unlockCheck: (s) => s.seaCleared >= 1,
+  },
 };
 
 /* ─── ENEMY DEFINITIONS ─── */
@@ -262,6 +293,8 @@ const ETYPES = {
   imugi:     { name: "이무기",   hp: 250, spd: 0.7, r: 22, col: "#66bb6a", xp: 20, dmg: 18, goldMin: 10, goldMax: 20, elite: true },
   gumiho:    { name: "구미호",   hp: 800, spd: 0.5, r: 28, col: "#f06292", xp: 80, dmg: 20, boss: true, goldMin: 40, goldMax: 60 },
   foxClone:  { name: "여우분신", hp: 80,  spd: 1.3, r: 16, col: "#f48fb1", xp: 5,  dmg: 10, goldMin: 1, goldMax: 2 },
+  dokkaKing: { name: "도깨비왕", hp: 400, spd: 0.6, r: 24, col: "#ff3d00", xp: 30, dmg: 22, goldMin: 15, goldMax: 30, elite: true },
+  haetae:    { name: "해태",     hp: 500, spd: 0.45,r: 26, col: "#ffc107", xp: 35, dmg: 25, goldMin: 20, goldMax: 35, elite: true },
 };
 
 const SPAWN_TBL = [
@@ -364,6 +397,36 @@ const WDEFS = {
       { dmg: 33, cd: 1700, rad: 170, kb: 160 },    { dmg: 40, cd: 1500, rad: 190, kb: 180 },
     ],
   },
+  scythe: {
+    name: "사신낫", desc: "전방 호를 그리는 거대한 낫 일격",
+    icon: "🌙", col: "#b388ff", attr: "yin", maxLv: 8,
+    lvs: [
+      { dmg: 22, cd: 1600, arc: 1.8, rad: 70 },    { dmg: 27, cd: 1500, arc: 2.0, rad: 78 },
+      { dmg: 32, cd: 1400, arc: 2.2, rad: 85 },    { dmg: 38, cd: 1300, arc: 2.4, rad: 92 },
+      { dmg: 45, cd: 1200, arc: 2.6, rad: 100 },   { dmg: 52, cd: 1100, arc: 2.8, rad: 108 },
+      { dmg: 60, cd: 1000, arc: 3.0, rad: 118 },   { dmg: 72, cd: 900, arc: 3.2, rad: 130 },
+    ],
+  },
+  quake: {
+    name: "지진파", desc: "땅을 내려쳐 주변에 충격파를 일으킴",
+    icon: "🌋", col: "#8d6e63", attr: "yang", maxLv: 8,
+    lvs: [
+      { dmg: 18, cd: 2800, rad: 100, stunT: 0.5 }, { dmg: 22, cd: 2600, rad: 112, stunT: 0.6 },
+      { dmg: 27, cd: 2400, rad: 125, stunT: 0.7 }, { dmg: 32, cd: 2200, rad: 140, stunT: 0.8 },
+      { dmg: 38, cd: 2000, rad: 155, stunT: 0.9 }, { dmg: 44, cd: 1800, rad: 170, stunT: 1.0 },
+      { dmg: 52, cd: 1600, rad: 188, stunT: 1.1 }, { dmg: 62, cd: 1400, rad: 210, stunT: 1.3 },
+    ],
+  },
+  trident: {
+    name: "해류창", desc: "관통하는 물줄기를 발사",
+    icon: "🔱", col: "#29b6f6", attr: "yang", maxLv: 8,
+    lvs: [
+      { dmg: 20, cd: 1300, spd: 5.5, cnt: 1, prc: 3 }, { dmg: 24, cd: 1200, spd: 5.8, cnt: 1, prc: 3 },
+      { dmg: 28, cd: 1100, spd: 6.0, cnt: 2, prc: 4 }, { dmg: 33, cd: 1000, spd: 6.3, cnt: 2, prc: 4 },
+      { dmg: 40, cd: 900, spd: 6.6, cnt: 2, prc: 5 },  { dmg: 48, cd: 800, spd: 7.0, cnt: 3, prc: 5 },
+      { dmg: 56, cd: 700, spd: 7.5, cnt: 3, prc: 6 },  { dmg: 68, cd: 600, spd: 8.0, cnt: 3, prc: 8 },
+    ],
+  },
 };
 
 /* ─── EVOLVED WEAPONS ─── */
@@ -410,6 +473,28 @@ const EVOLVED = {
       { cnt: 10, dmg: 60, rad: 195, spd: 4.3, kb: 110, dotDmg: 15, dotDur: 4 },
     ],
   },
+  deathQuake: {
+    name: "명부진동", desc: "사신낫 + 지진파: 광범위 사신 충격파. 적 HP 12% 즉사 확률",
+    icon: "☠️", col: "#9c27b0", recipe: ["scythe", "quake"], maxLv: 5,
+    lvs: [
+      { dmg: 50, cd: 1400, rad: 140, arc: 3.5, stunT: 1.0, execPct: 0.08 },
+      { dmg: 60, cd: 1300, rad: 155, arc: 3.8, stunT: 1.1, execPct: 0.10 },
+      { dmg: 72, cd: 1200, rad: 170, arc: 4.0, stunT: 1.2, execPct: 0.12 },
+      { dmg: 85, cd: 1100, rad: 188, arc: 4.2, stunT: 1.3, execPct: 0.14 },
+      { dmg: 100, cd: 1000, rad: 210, arc: 4.5, stunT: 1.5, execPct: 0.16 },
+    ],
+  },
+  tidalStorm: {
+    name: "해일폭풍", desc: "해류창 + 빙결파동: 얼어붙는 거대 해일",
+    icon: "🌊", col: "#0288d1", recipe: ["trident", "frost"], maxLv: 5,
+    lvs: [
+      { dmg: 45, cd: 1000, spd: 7, cnt: 3, prc: 6, frzChance: 0.3, frzDur: 1500 },
+      { dmg: 55, cd: 950, spd: 7.5, cnt: 3, prc: 7, frzChance: 0.35, frzDur: 1700 },
+      { dmg: 65, cd: 900, spd: 8, cnt: 4, prc: 8, frzChance: 0.4, frzDur: 1900 },
+      { dmg: 78, cd: 850, spd: 8.5, cnt: 4, prc: 9, frzChance: 0.45, frzDur: 2100 },
+      { dmg: 95, cd: 800, spd: 9, cnt: 5, prc: 10, frzChance: 0.5, frzDur: 2500 },
+    ],
+  },
 };
 
 const RECIPES = [
@@ -417,6 +502,8 @@ const RECIPES = [
   { a: "fire", b: "curseMist", result: "ghostFlame" },
   { a: "lightning", b: "frost", result: "thunderIce" },
   { a: "beads", b: "windSpirit", result: "divineWind" },
+  { a: "scythe", b: "quake", result: "deathQuake" },
+  { a: "trident", b: "frost", result: "tidalStorm" },
 ];
 
 function getWDef(t) { return WDEFS[t] || EVOLVED[t]; }
@@ -444,6 +531,40 @@ const META_UPGRADES = {
   metaRegen:   { name: "재생력",        desc: "초당 HP +0.3 회복",    icon: "💚",  maxLv: 5,  costs: [150,300,500,800,1200] },
   metaGold:    { name: "금화 보너스",   desc: "골드 획득 +10%",       icon: "💰",  maxLv: 10, costs: [100,200,320,460,620,800,1000,1250,1530,1850] },
   metaRevive:  { name: "부활",          desc: "사망 시 HP 30% 부활 (런당 1회)", icon: "💫", maxLv: 1, costs: [3000] },
+};
+
+/* ─── MAP DEFINITIONS ─── */
+const MAPS = {
+  bamboo: {
+    name: "대나무 숲", emoji: "🎋", desc: "기본 맵. 대나무와 달빛의 고요한 전장",
+    bg: "#081210", gridCol: "rgba(80,160,100,.04)", bamboo: true, moon: true,
+    waterZones: false, graveFx: false,
+    unlocked: true,
+  },
+  graveyard: {
+    name: "지하묘지", emoji: "⚰️", desc: "언데드 적 강화. 해골병사·처녀귀신 출현 빨라짐",
+    bg: "#0a0808", gridCol: "rgba(120,80,80,.05)", bamboo: false, moon: false,
+    waterZones: false, graveFx: true,
+    enemyBonus: { skeleton: { hpMul: 1.3 }, ghost: { hpMul: 1.3 } },
+    spawnOverride: [
+      { t: 0, types: ["dokkaebi", "skeleton"] },
+      { t: 60, types: ["dokkaebi", "skeleton", "ghost"] },
+      { t: 120, types: ["skeleton", "ghost", "bulgasari"] },
+      { t: 180, types: ["skeleton", "ghost", "wisp", "bulgasari"] },
+      { t: 240, types: ["ghost", "jangsan", "skeleton", "bulgasari"] },
+      { t: 360, types: ["skeleton", "ghost", "jangsan", "bulgasari", "dokkaebi"] },
+      { t: 480, types: ["skeleton", "ghost", "jangsan", "bulgasari"] },
+    ],
+    unlocked: false, unlockCheck: (s) => s.gamesWon >= 1,
+    unlockDesc: "아무 맵에서 클리어",
+  },
+  sea: {
+    name: "용궁 해변", emoji: "🌊", desc: "맵에 물 지대 존재. 물 위에서 적 감속, 해녀 강화",
+    bg: "#06101a", gridCol: "rgba(60,120,180,.04)", bamboo: false, moon: true,
+    waterZones: true, graveFx: false,
+    unlocked: false, unlockCheck: (s) => s.gamesWon >= 2,
+    unlockDesc: "2회 클리어",
+  },
 };
 
 /* ─── DIFFICULTY ─── */
@@ -756,6 +877,21 @@ class Game {
       diffSel.appendChild(opt);
     }
 
+    /* map selection */
+    const mapSel = document.getElementById("map-select");
+    if (mapSel) {
+      mapSel.innerHTML = "";
+      for (const [id, m] of Object.entries(MAPS)) {
+        const unlocked = m.unlocked || (m.unlockCheck && m.unlockCheck(cStats));
+        const opt = document.createElement("option");
+        opt.value = id;
+        opt.textContent = unlocked ? (m.emoji + " " + m.name) : ("🔒 " + (m.unlockDesc || m.name));
+        opt.disabled = !unlocked;
+        if (id === this.settings.map) opt.selected = true;
+        mapSel.appendChild(opt);
+      }
+    }
+
     /* joystick sensitivity */
     const joySlider = document.getElementById("joy-sens");
     if (joySlider) {
@@ -781,6 +917,8 @@ class Game {
     this.settings.difficulty = document.getElementById("diff-select").value;
     const joyEl = document.getElementById("joy-sens");
     if (joyEl) this.settings.joySens = parseInt(joyEl.value);
+    const mapEl = document.getElementById("map-select");
+    if (mapEl && !mapEl.selectedOptions[0].disabled) this.settings.map = mapEl.value;
     saveSettings(this.settings);
     this.sfx.setSfxVol(this.settings.sfxVol / 100);
     this.sfx.setBgmVol(this.settings.bgmVol / 100);
@@ -820,6 +958,17 @@ class Game {
     this.reviveAvail = (meta.metaRevive || 0) >= 1;
     this.reviveUsed = false;
 
+    /* map setup */
+    this.mapId = this.settings.map || "bamboo";
+    this.mapDef = MAPS[this.mapId] || MAPS.bamboo;
+    /* generate water zones for sea map */
+    this.waterZones = [];
+    if (this.mapDef.waterZones) {
+      for (let i = 0; i < 6; i++) {
+        this.waterZones.push({ x: rand(200, W - 200), y: rand(200, H - 200), r: rand(120, 220) });
+      }
+    }
+
     this.p = {
       x: cx, y: cy, r: 13, spd, hp, maxHp: hp,
       armor, magnetR, cdMul, xpMul, dmgMul, baseDmgMul: dmgMul, regen,
@@ -833,7 +982,7 @@ class Game {
     this.lightnings = []; this.frostWaves = []; this.clouds = []; this.enemyProjs = [];
     this.talismans = []; this.talismanT = 0;
     this.goldCoins = []; this.chests = [];
-    this.windBursts = [];
+    this.windBursts = []; this.scytheSlashes = [];
     this.xp = 0; this.level = 1; this.xpNext = 10;
     this.elapsed = 0; this.killCount = 0; this.totalDmg = 0;
     this.goldEarned = 0; this.damageTaken = 0;
@@ -899,10 +1048,19 @@ class Game {
     if (this.p.invT > 0) this.p.invT -= dt;
     if (this.p.flashT > 0) this.p.flashT -= dt;
 
-    /* fox spirit passive: low HP boost */
+    /* character passives */
     if (this.charPassive === "lowHpBoost") {
       const hpRatio = this.p.hp / this.p.maxHp;
       this.p.dmgMul = this.p.baseDmgMul * (1 + (1 - hpRatio) * 0.8);
+    } else if (this.charPassive === "growingPower") {
+      /* 산신령: every 60s, +8% dmg */
+      this.p.dmgMul = this.p.baseDmgMul * (1 + floor(this.elapsed / 60) * 0.08);
+    } else if (this.charPassive === "waterAffinity" && this.waterZones.length) {
+      /* 해녀: in water zones, +30% dmg, +20% speed */
+      let inWater = false;
+      for (const wz of this.waterZones) if (dist(this.p, wz) < wz.r) { inWater = true; break; }
+      this.p.dmgMul = this.p.baseDmgMul * (inWater ? 1.3 : 1);
+      this.p.spd = (CHARACTERS[this.selectedChar].spd * (1 + (this.metaLvs.metaSpd || 0) * 0.03)) * (inWater ? 1.2 : 1);
     }
 
     /* spawn */
@@ -945,6 +1103,16 @@ class Game {
     this.dmgNums = this.dmgNums.filter(d => {
       d.y -= 40 * dt; d.life -= dt; d.a = max(0, d.life / d.maxLife); return d.life > 0;
     });
+    /* scythe slashes */
+    if (this.scytheSlashes) this.scytheSlashes = this.scytheSlashes.filter(s => { s.t -= dt; return s.t > 0; });
+    /* water zone enemy slow */
+    if (this.waterZones.length) {
+      for (const e of this.enemies) {
+        let inW = false;
+        for (const wz of this.waterZones) if (dist(e, wz) < wz.r) { inW = true; break; }
+        if (inW && e.slowT <= 0) { e.slowT = 0.2; e.slowF = 0.5; }
+      }
+    }
     /* announcements */
     this.announcements = this.announcements.filter(a => { a.life -= dt; return a.life > 0; });
 
@@ -988,7 +1156,8 @@ class Game {
     if (this.enemies.length >= 250) return;
     const count = min(12, 2 + floor(mf * 0.9 * spdMul));
     let types = ["dokkaebi"];
-    for (const row of SPAWN_TBL) if (this.elapsed >= row.t) types = row.types;
+    const spawnTbl = (this.mapDef && this.mapDef.spawnOverride) || SPAWN_TBL;
+    for (const row of spawnTbl) if (this.elapsed >= row.t) types = row.types;
     for (let i = 0; i < count; i++) {
       const etype = pick(types);
       if (etype === "wisp") {
@@ -1034,8 +1203,14 @@ class Game {
       const angle = rand(0, TAU), d = rand(400, 550);
       const x = clamp(this.p.x + cos(angle) * d, 40, W - 40);
       const y = clamp(this.p.y + sin(angle) * d, 40, H - 40);
-      this._spawnEnemy("imugi", x, y, this.elapsed / 60);
-      this.announcements.push({ text: "⚠️ 이무기 출현!", life: 2.5, maxLife: 2.5 });
+      /* rotate mini-bosses: imugi → dokkaKing → haetae → repeat */
+      const elitePool = ["imugi", "dokkaKing", "haetae"];
+      const eliteNames = { imugi: "⚠️ 이무기 출현!", dokkaKing: "👹 도깨비왕 출현!", haetae: "🦁 해태 출현!" };
+      this._eliteIdx = ((this._eliteIdx || 0)) % elitePool.length;
+      const etype = elitePool[this._eliteIdx];
+      this._eliteIdx++;
+      this._spawnEnemy(etype, x, y, this.elapsed / 60);
+      this.announcements.push({ text: eliteNames[etype] || "⚠️ 엘리트 출현!", life: 2.5, maxLife: 2.5 });
       this.sfx.boss();
     }
   }
@@ -1077,6 +1252,9 @@ class Game {
         case "aura": this._wpnAura(w, lv, dt); break;
         case "beads": case "divineWind": this._wpnBeads(w, lv, dt, w.type); break;
         case "windSpirit": this._wpnWind(w, lv, now); break;
+        case "scythe": case "deathQuake": this._wpnScythe(w, lv, now, w.type); break;
+        case "quake": this._wpnQuake(w, lv, now); break;
+        case "trident": case "tidalStorm": this._wpnTrident(w, lv, now, w.type); break;
       }
     }
   }
@@ -1198,6 +1376,61 @@ class Game {
     this.windBursts.push({ x: this.p.x, y: this.p.y, rad: 0, maxRad: lv.rad, kb: lv.kb, dmg: lv.dmg, spd: 300, hitSet: new Set() });
   }
 
+  _wpnScythe(w, lv, now, type) {
+    const cd = lv.cd * this.p.cdMul; if (now - w.lastFire < cd) return; w.lastFire = now;
+    this.sfx.wpn("blade");
+    const halfArc = (lv.arc || 2.0) / 2;
+    const facing = this.p.facing;
+    const isEvolved = type === "deathQuake";
+    for (const e of this.enemies) {
+      const d = dist(e, this.p);
+      if (d > (lv.rad || 100)) continue;
+      const a = atan2(e.y - this.p.y, e.x - this.p.x);
+      let da = a - facing; while (da > PI) da -= TAU; while (da < -PI) da += TAU;
+      if (abs(da) < halfArc) {
+        this._damageEnemy(e, lv.dmg);
+        if (lv.stunT) { e.slowT = max(e.slowT, lv.stunT); e.slowF = 0; }
+        if (isEvolved && lv.execPct && !e.boss && Math.random() < lv.execPct) {
+          e.hp = 0; /* instant kill */
+        }
+      }
+    }
+    /* visual: arc slash */
+    this.scytheSlashes = this.scytheSlashes || [];
+    this.scytheSlashes.push({ x: this.p.x, y: this.p.y, facing, arc: lv.arc || 2.0, rad: lv.rad || 100, t: 0.25, col: isEvolved ? "#9c27b0" : "#b388ff" });
+  }
+
+  _wpnQuake(w, lv, now) {
+    const cd = lv.cd * this.p.cdMul; if (now - w.lastFire < cd) return; w.lastFire = now;
+    this.sfx.knockback(); this._shake(8, 0.3);
+    for (const e of this.enemies) {
+      if (dist(e, this.p) < lv.rad + e.r) {
+        this._damageEnemy(e, lv.dmg);
+        if (lv.stunT) { e.slowT = max(e.slowT, lv.stunT); e.slowF = 0; }
+      }
+    }
+    /* visual: quake wave */
+    this.windBursts.push({ x: this.p.x, y: this.p.y, rad: 0, maxRad: lv.rad, kb: 0, dmg: 0, spd: 250, hitSet: new Set(), col: "#8d6e63" });
+  }
+
+  _wpnTrident(w, lv, now, type) {
+    const cd = lv.cd * this.p.cdMul; if (now - w.lastFire < cd) return; w.lastFire = now;
+    const sorted = [...this.enemies].sort((a, b) => dist(a, this.p) - dist(b, this.p));
+    const targets = sorted.slice(0, lv.cnt); if (!targets.length) return;
+    this.sfx.wpn("frost");
+    const isEvolved = type === "tidalStorm";
+    for (const tgt of targets) {
+      const a = atan2(tgt.y - this.p.y, tgt.x - this.p.x);
+      this.projs.push({
+        x: this.p.x, y: this.p.y, vx: cos(a) * lv.spd, vy: sin(a) * lv.spd,
+        dmg: lv.dmg, r: 7, prc: lv.prc, col: isEvolved ? "#0288d1" : "#29b6f6",
+        life: 3, maxLife: 3, type, hitSet: new Set(),
+        frzChance: isEvolved ? (lv.frzChance || 0) : 0,
+        frzDur: isEvolved ? (lv.frzDur || 0) : 0,
+      });
+    }
+  }
+
   /* ── PROJECTILES ── */
   _updateProjs(dt) {
     this.projs = this.projs.filter(p => {
@@ -1207,6 +1440,11 @@ class Game {
         if (p.hitSet.has(e.id)) continue;
         if (dist(p, e) < p.r + e.r) {
           p.hitSet.add(e.id); this._damageEnemy(e, p.dmg); this.sfx.hit();
+          /* tidalStorm freeze */
+          if (p.frzChance && Math.random() < p.frzChance) {
+            e.slowT = max(e.slowT, (p.frzDur || 1500) / 1000);
+            e.slowF = 0.15;
+          }
           p.prc--; if (p.prc <= 0) return false;
         }
       }
@@ -1318,6 +1556,8 @@ class Game {
           case "bulgasari": this._aiBulgasari(e, dt, sm); break;
           case "jangsan": this._aiJangsan(e, dt, sm); break;
           case "imugi": this._aiImugi(e, dt, sm); break;
+          case "dokkaKing": this._aiDokkaKing(e, dt, sm); break;
+          case "haetae": this._aiHaetae(e, dt, sm); break;
           default: this._aiChase(e, dt, sm); break;
         }
       }
@@ -1508,11 +1748,48 @@ class Game {
     }
   }
 
+  /* ── AI: 도깨비왕 — slow + ground pound AoE ── */
+  _aiDokkaKing(e, dt, sm) {
+    const a = atan2(this.p.y - e.y, this.p.x - e.x);
+    e.x += cos(a) * e.spd * sm * dt * 60;
+    e.y += sin(a) * e.spd * sm * dt * 60;
+    e.atkT = (e.atkT || 0) + dt;
+    if (e.atkT >= 3.5 && dist(e, this.p) < 200) {
+      e.atkT = 0;
+      /* ground pound: damage + knockback nearby player */
+      this._shake(10, 0.4);
+      this.sfx.knockback();
+      this.windBursts.push({ x: e.x, y: e.y, rad: 0, maxRad: 120, kb: 80, dmg: Math.round(e.dmg * 0.6), spd: 200, hitSet: new Set(), col: "#ff3d00" });
+    }
+  }
+
+  /* ── AI: 해태 — fire breath cone + chase ── */
+  _aiHaetae(e, dt, sm) {
+    const a = atan2(this.p.y - e.y, this.p.x - e.x);
+    e.x += cos(a) * e.spd * sm * dt * 60;
+    e.y += sin(a) * e.spd * sm * dt * 60;
+    e.atkT = (e.atkT || 0) + dt;
+    if (e.atkT >= 3 && dist(e, this.p) < 250) {
+      e.atkT = 0;
+      /* fire breath: 5 projectiles in a cone */
+      for (let j = -2; j <= 2; j++) {
+        const sa = a + j * 0.22;
+        this.enemyProjs.push({ x: e.x, y: e.y, vx: cos(sa) * 3, vy: sin(sa) * 3, dmg: Math.round(e.dmg * 0.7), r: 5, life: 1.5, col: "#ffc107" });
+      }
+      this.sfx.boss();
+    }
+  }
+
   /* ── DAMAGE ── */
   _damageEnemy(e, baseDmg) {
     let dmg = Math.round(baseDmg * (this.p.dmgMul || 1));
     let crit = false;
     if (Math.random() < 0.1) { dmg = Math.round(dmg * 2); crit = true; }
+    /* reaper passive: 5% chance to deal 25% max HP as bonus damage */
+    if (this.charPassive === "executeChance" && !e.boss && Math.random() < 0.05) {
+      dmg += Math.round(e.maxHp * 0.25);
+      crit = true;
+    }
     e.hp -= dmg; e.hitT = 0.1; this.totalDmg += dmg;
     /* cap dmg numbers for performance */
     if (this.dmgNums.length < 80) {
@@ -1871,6 +2148,14 @@ class Game {
     if (won) this.cStats.gamesWon++;
     if (this.elapsed > this.cStats.maxSurvivalTime) this.cStats.maxSurvivalTime = this.elapsed;
     if (this.level > this.cStats.highestLevel) this.cStats.highestLevel = this.level;
+    /* track nightmare survival */
+    if (this.settings.difficulty === "nightmare") {
+      this.cStats.nightmareMaxTime = max(this.cStats.nightmareMaxTime || 0, this.elapsed);
+    }
+    /* track sea map clear */
+    if (won && this.mapId === "sea") {
+      this.cStats.seaCleared = (this.cStats.seaCleared || 0) + 1;
+    }
     saveCStats(this.cStats);
 
     /* check new unlocks */
@@ -1979,32 +2264,68 @@ class Game {
     const cx = this.cam.x, cy = this.cam.y;
     const toX = x => x - cx, toY = y => y - cy;
 
-    /* ── background ── */
-    c.fillStyle = "#081210"; c.fillRect(0, 0, sw, sh);
-    const gs = 60; c.strokeStyle = "rgba(80,160,100,.04)"; c.lineWidth = 1;
+    /* ── background (map-aware) ── */
+    const mapD = this.mapDef || MAPS.bamboo;
+    c.fillStyle = mapD.bg || "#081210"; c.fillRect(0, 0, sw, sh);
+    const gs = 60; c.strokeStyle = mapD.gridCol || "rgba(80,160,100,.04)"; c.lineWidth = 1;
     const ox = -(cx % gs), oy = -(cy % gs);
     c.beginPath();
     for (let x = ox; x < sw; x += gs) { c.moveTo(x, 0); c.lineTo(x, sh); }
     for (let y = oy; y < sh; y += gs) { c.moveTo(0, y); c.lineTo(sw, y); }
     c.stroke();
 
-    /* bamboo stalks */
-    const bSpacing = 140; c.strokeStyle = "rgba(60,130,80,.1)"; c.lineWidth = 3;
-    const bOx = -(cx % bSpacing);
-    for (let bx = bOx - bSpacing; bx < sw + bSpacing; bx += bSpacing) {
-      const wx = bx + cx, jitter = ((wx * 7 + 13) % bSpacing) * 0.3;
-      const sx = bx + jitter; c.beginPath(); c.moveTo(sx, 0); c.lineTo(sx, sh); c.stroke();
-      c.lineWidth = 1.5;
-      for (let ny = ((cy * 3 + wx) % 80); ny < sh; ny += rand(70, 110)) {
-        c.beginPath(); c.moveTo(sx - 6, ny); c.lineTo(sx + 6, ny); c.stroke();
+    /* map-specific decorations */
+    if (mapD.bamboo) {
+      const bSpacing = 140; c.strokeStyle = "rgba(60,130,80,.1)"; c.lineWidth = 3;
+      const bOx = -(cx % bSpacing);
+      for (let bx = bOx - bSpacing; bx < sw + bSpacing; bx += bSpacing) {
+        const wx = bx + cx, jitter = ((wx * 7 + 13) % bSpacing) * 0.3;
+        const sx = bx + jitter; c.beginPath(); c.moveTo(sx, 0); c.lineTo(sx, sh); c.stroke();
+        c.lineWidth = 1.5;
+        for (let ny = ((cy * 3 + wx) % 80); ny < sh; ny += rand(70, 110)) {
+          c.beginPath(); c.moveTo(sx - 6, ny); c.lineTo(sx + 6, ny); c.stroke();
+        }
+        c.lineWidth = 3;
       }
-      c.lineWidth = 3;
+    }
+    if (mapD.graveFx) {
+      /* graveyard: tombstones */
+      const tSpacing = 180; c.fillStyle = "rgba(120,80,80,.08)";
+      const tOx = -(cx % tSpacing), tOy = -(cy % tSpacing);
+      for (let tx = tOx; tx < sw; tx += tSpacing) {
+        for (let ty = tOy; ty < sh; ty += tSpacing) {
+          const jx = ((tx + cx) * 13 + 7) % tSpacing * 0.4;
+          const jy = ((ty + cy) * 11 + 3) % tSpacing * 0.3;
+          c.fillRect(tx + jx - 5, ty + jy - 12, 10, 16);
+          c.fillRect(tx + jx - 8, ty + jy - 8, 16, 4);
+        }
+      }
+    }
+    /* water zones */
+    if (this.waterZones && this.waterZones.length) {
+      for (const wz of this.waterZones) {
+        const wzx = toX(wz.x), wzy = toY(wz.y);
+        if (wzx < -wz.r - 50 || wzx > sw + wz.r + 50 || wzy < -wz.r - 50 || wzy > sh + wz.r + 50) continue;
+        c.save(); c.globalAlpha = 0.08; c.fillStyle = "#29b6f6";
+        c.beginPath(); c.arc(wzx, wzy, wz.r, 0, TAU); c.fill();
+        c.globalAlpha = 0.15; c.strokeStyle = "#0288d1"; c.lineWidth = 2;
+        c.beginPath(); c.arc(wzx, wzy, wz.r, 0, TAU); c.stroke();
+        /* wave lines */
+        c.globalAlpha = 0.06; c.strokeStyle = "#81d4fa"; c.lineWidth = 1;
+        for (let i = 0; i < 3; i++) {
+          const wr = wz.r * (0.4 + i * 0.25);
+          c.beginPath(); c.arc(wzx, wzy, wr, 0, TAU); c.stroke();
+        }
+        c.restore();
+      }
     }
 
-    /* moon */
-    c.save(); c.globalAlpha = 0.08; c.fillStyle = "#ffffcc";
-    c.beginPath(); c.arc(sw - 120, 80, 60, 0, TAU); c.fill();
-    c.globalAlpha = 0.03; c.beginPath(); c.arc(sw - 120, 80, 90, 0, TAU); c.fill(); c.restore();
+    /* moon (if map has it) */
+    if (mapD.moon !== false) {
+      c.save(); c.globalAlpha = 0.08; c.fillStyle = "#ffffcc";
+      c.beginPath(); c.arc(sw - 120, 80, 60, 0, TAU); c.fill();
+      c.globalAlpha = 0.03; c.beginPath(); c.arc(sw - 120, 80, 90, 0, TAU); c.fill(); c.restore();
+    }
 
     /* world border */
     c.strokeStyle = "rgba(200,80,80,.25)"; c.lineWidth = 3;
@@ -2215,6 +2536,45 @@ class Game {
         c.arc(sx - 5, sy - 3, 3, 0, TAU); c.arc(sx + 5, sy - 3, 3, 0, TAU); c.fill();
         c.fillStyle = "#c62828"; c.beginPath();
         c.arc(sx - 5, sy - 3, 1.5, 0, TAU); c.arc(sx + 5, sy - 3, 1.5, 0, TAU); c.fill();
+      } else if (e.type === "dokkaKing") {
+        /* 도깨비왕: large dokkaebi with crown */
+        c.fillStyle = hf ? "#fff" : e.col;
+        c.shadowColor = "#ffd93d"; c.shadowBlur = 18;
+        c.beginPath(); c.arc(sx, sy, e.r, 0, TAU); c.fill();
+        /* horn */
+        c.fillStyle = hf ? "#fff" : "#bf360c";
+        c.beginPath(); c.moveTo(sx - 6, sy - e.r); c.lineTo(sx - 2, sy - e.r - 16); c.lineTo(sx + 2, sy - e.r); c.fill();
+        c.beginPath(); c.moveTo(sx + 2, sy - e.r); c.lineTo(sx + 6, sy - e.r - 16); c.lineTo(sx + 10, sy - e.r); c.fill();
+        /* crown */
+        c.fillStyle = "#ffd93d";
+        c.beginPath(); c.moveTo(sx - 10, sy - e.r + 2); c.lineTo(sx - 6, sy - e.r - 8); c.lineTo(sx, sy - e.r + 2);
+        c.lineTo(sx + 6, sy - e.r - 8); c.lineTo(sx + 10, sy - e.r + 2); c.fill();
+        /* eyes */
+        c.fillStyle = "#fff"; c.beginPath();
+        c.arc(sx - 5, sy - 3, 3, 0, TAU); c.arc(sx + 5, sy - 3, 3, 0, TAU); c.fill();
+        c.fillStyle = "#1a1a2e"; c.beginPath();
+        c.arc(sx - 5, sy - 3, 1.5, 0, TAU); c.arc(sx + 5, sy - 3, 1.5, 0, TAU); c.fill();
+      } else if (e.type === "haetae") {
+        /* 해태: golden lion guardian */
+        c.fillStyle = hf ? "#fff" : e.col;
+        c.shadowColor = "#ffc107"; c.shadowBlur = 20;
+        c.beginPath(); c.arc(sx, sy, e.r, 0, TAU); c.fill();
+        /* mane */
+        if (!hf) {
+          c.strokeStyle = "#ff8f00"; c.lineWidth = 3;
+          for (let i = 0; i < 8; i++) {
+            const ma = TAU / 8 * i + sin(this.elapsed * 2) * 0.1;
+            c.beginPath();
+            c.moveTo(sx + cos(ma) * e.r, sy + sin(ma) * e.r);
+            c.lineTo(sx + cos(ma) * (e.r + 10), sy + sin(ma) * (e.r + 10));
+            c.stroke();
+          }
+        }
+        /* eyes */
+        c.fillStyle = "#fff"; c.beginPath();
+        c.arc(sx - 6, sy - 4, 3.5, 0, TAU); c.arc(sx + 6, sy - 4, 3.5, 0, TAU); c.fill();
+        c.fillStyle = "#d32f2f"; c.beginPath();
+        c.arc(sx - 6, sy - 4, 2, 0, TAU); c.arc(sx + 6, sy - 4, 2, 0, TAU); c.fill();
       } else {
         /* 도깨비, 해골 etc */
         c.beginPath(); c.arc(sx, sy, e.r, 0, TAU);
@@ -2313,6 +2673,20 @@ class Game {
       c.lineTo(ex, ey); c.stroke(); c.restore();
     }
 
+    /* ── scythe slashes ── */
+    if (this.scytheSlashes) {
+      for (const sl of this.scytheSlashes) {
+        c.save();
+        c.globalAlpha = min(1, sl.t / 0.1) * 0.5;
+        c.strokeStyle = sl.col; c.shadowColor = sl.col; c.shadowBlur = 12; c.lineWidth = 4;
+        const sx = toX(sl.x), sy = toY(sl.y);
+        c.beginPath();
+        c.arc(sx, sy, sl.rad, sl.facing - sl.arc / 2, sl.facing + sl.arc / 2);
+        c.stroke();
+        c.restore();
+      }
+    }
+
     /* ── particles ── */
     for (const pt of this.particles) {
       c.globalAlpha = pt.a; c.beginPath();
@@ -2329,7 +2703,7 @@ class Game {
       const flash = this.p.flashT > 0, blink = this.p.invT > 0 && floor(this.p.invT * 12) % 2 === 0;
       c.fillStyle = flash ? "#ff5252" : blink ? "rgba(255,213,79,.4)" : "#fafafa"; c.fill(); c.restore();
       /* headband - color varies by character */
-      const hbColors = { exorcist: "#d32f2f", shaman: "#7b1fa2", taoist: "#1565c0", hunter: "#2e7d32", monk: "#ff6f00", foxSpirit: "#f06292" };
+      const hbColors = { exorcist: "#d32f2f", shaman: "#7b1fa2", taoist: "#1565c0", hunter: "#2e7d32", monk: "#ff6f00", foxSpirit: "#f06292", reaper: "#6a1b9a", mountainGod: "#5d4037", seaDiver: "#0277bd" };
       c.fillStyle = hbColors[this.selectedChar] || "#d32f2f";
       c.fillRect(sx - this.p.r * 0.8, sy - this.p.r * 0.7, this.p.r * 1.6, 3);
       /* facing arrow */
