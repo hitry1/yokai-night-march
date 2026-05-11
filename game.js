@@ -1,5 +1,5 @@
 /* ================================================================
-   요괴야행 (Yokai Night March) v2.0
+   요괴야행 (Yokai Night March) v2.1
    Korean-mythology Vampire-Survivors roguelike
    Pure vanilla JS · HTML5 Canvas · Zero dependencies
 
@@ -72,7 +72,7 @@ function saveCStats(v) { _save(KEYS.stats, v); }
 
 /* settings */
 function loadSettings() {
-  return _load(KEYS.settings, { sfxVol: 50, bgmVol: 30, difficulty: "normal" });
+  return _load(KEYS.settings, { sfxVol: 50, bgmVol: 30, difficulty: "normal", joySens: 100 });
 }
 function saveSettings(v) { _save(KEYS.settings, v); }
 
@@ -570,7 +570,8 @@ class Game {
       e.preventDefault();
       for (const t of e.changedTouches) {
         if (t.identifier === tId) {
-          const dx = t.clientX - ox, dy = t.clientY - oy;
+          const sens = (this.settings.joySens || 100) / 100;
+          const dx = (t.clientX - ox) * sens, dy = (t.clientY - oy) * sens;
           const d = sqrt(dx * dx + dy * dy), mR = 60;
           if (d > mR) { this.touch.dx = dx / d; this.touch.dy = dy / d; }
           else { this.touch.dx = dx / mR; this.touch.dy = dy / mR; }
@@ -755,6 +756,16 @@ class Game {
       diffSel.appendChild(opt);
     }
 
+    /* joystick sensitivity */
+    const joySlider = document.getElementById("joy-sens");
+    if (joySlider) {
+      joySlider.value = this.settings.joySens || 100;
+      document.getElementById("joy-val").textContent = (this.settings.joySens || 100) + "%";
+      joySlider.oninput = (e) => {
+        document.getElementById("joy-val").textContent = e.target.value + "%";
+      };
+    }
+
     /* live update listeners */
     document.getElementById("sfx-vol").oninput = (e) => {
       document.getElementById("sfx-val").textContent = e.target.value + "%";
@@ -768,6 +779,8 @@ class Game {
     this.settings.sfxVol = parseInt(document.getElementById("sfx-vol").value);
     this.settings.bgmVol = parseInt(document.getElementById("bgm-vol").value);
     this.settings.difficulty = document.getElementById("diff-select").value;
+    const joyEl = document.getElementById("joy-sens");
+    if (joyEl) this.settings.joySens = parseInt(joyEl.value);
     saveSettings(this.settings);
     this.sfx.setSfxVol(this.settings.sfxVol / 100);
     this.sfx.setBgmVol(this.settings.bgmVol / 100);
@@ -823,7 +836,7 @@ class Game {
     this.windBursts = [];
     this.xp = 0; this.level = 1; this.xpNext = 10;
     this.elapsed = 0; this.killCount = 0; this.totalDmg = 0;
-    this.goldEarned = 0;
+    this.goldEarned = 0; this.damageTaken = 0;
     this.spawnTimer = 0; this.spawnInterval = 1500;
     this.eliteTimer = 0;
     this.bossSpawned = false; this.allureT = 0; this.allureSrc = null;
@@ -971,6 +984,8 @@ class Game {
     this.spawnInterval = max(300, (1500 - mf * 100) / spdMul);
     this.spawnTimer -= dt * 1000; if (this.spawnTimer > 0) return;
     this.spawnTimer = this.spawnInterval;
+    /* hard cap total enemies to prevent frame drops */
+    if (this.enemies.length >= 250) return;
     const count = min(12, 2 + floor(mf * 0.9 * spdMul));
     let types = ["dokkaebi"];
     for (const row of SPAWN_TBL) if (this.elapsed >= row.t) types = row.types;
@@ -1206,7 +1221,7 @@ class Game {
       if (p.life <= 0) return false;
       if (dist(p, this.p) < p.r + this.p.r && this.p.invT <= 0) {
         const raw = max(1, p.dmg - this.p.armor);
-        this.p.hp -= raw; this.p.invT = 0.5; this.p.flashT = 0.15;
+        this.p.hp -= raw; this.p.invT = 0.5; this.p.flashT = 0.15; this.damageTaken += raw;
         this.sfx.dmg(); this._shake(4, 0.1);
         this._spawnParticles(this.p.x, this.p.y, 5, "#ef5350");
         this.dmgNums.push({ x: this.p.x, y: this.p.y - 20, txt: "-" + raw, col: "#ef5350", life: 0.8, maxLife: 0.8, a: 1, big: true });
@@ -1311,7 +1326,7 @@ class Game {
       /* collision with player */
       if (dist(e, this.p) < e.r + this.p.r && this.p.invT <= 0 && e.alpha > 0.6) {
         const raw = max(1, e.dmg - this.p.armor);
-        this.p.hp -= raw; this.p.invT = 0.5; this.p.flashT = 0.15;
+        this.p.hp -= raw; this.p.invT = 0.5; this.p.flashT = 0.15; this.damageTaken += raw;
         this.sfx.dmg(); this._shake(6, 0.15);
         this._spawnParticles(this.p.x, this.p.y, 8, "#ef5350");
         this.dmgNums.push({ x: this.p.x, y: this.p.y - 20, txt: "-" + raw, col: "#ef5350", life: 0.8, maxLife: 0.8, a: 1, big: true });
@@ -1499,8 +1514,11 @@ class Game {
     let crit = false;
     if (Math.random() < 0.1) { dmg = Math.round(dmg * 2); crit = true; }
     e.hp -= dmg; e.hitT = 0.1; this.totalDmg += dmg;
-    const col = crit ? "#ffd93d" : "#fff";
-    this.dmgNums.push({ x: e.x + rand(-10, 10), y: e.y - e.r - 5, txt: dmg.toString(), col, life: 0.6, maxLife: 0.6, a: 1, big: crit });
+    /* cap dmg numbers for performance */
+    if (this.dmgNums.length < 80) {
+      const col = crit ? "#ffd93d" : "#fff";
+      this.dmgNums.push({ x: e.x + rand(-10, 10), y: e.y - e.r - 5, txt: dmg.toString(), col, life: 0.6, maxLife: 0.6, a: 1, big: crit });
+    }
     this._spawnParticles(e.x, e.y, crit ? 6 : 3, e.col);
   }
 
@@ -1865,13 +1883,17 @@ class Game {
     const m = floor(this.elapsed / 60), s = floor(this.elapsed % 60);
     const ch = CHARACTERS[this.selectedChar];
     const diff = DIFFICULTIES[this.settings.difficulty];
+    const dps = this.elapsed > 0 ? Math.round(this.totalDmg / this.elapsed) : 0;
+    const kpm = this.elapsed > 0 ? (this.killCount / (this.elapsed / 60)).toFixed(1) : "0";
     const rows = [
       ["캐릭터", ch ? ch.icon + " " + ch.name : ""],
       ["난이도", diff ? diff.emoji + " " + diff.name : ""],
       ["생존 시간", `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`],
       ["레벨", "Lv " + this.level],
-      ["처치 수", this.killCount.toLocaleString()],
+      ["처치 수", this.killCount.toLocaleString() + ` (${kpm}/분)`],
       ["총 피해량", this.totalDmg.toLocaleString()],
+      ["DPS", dps.toLocaleString()],
+      ["받은 피해", (this.damageTaken || 0).toLocaleString()],
       ["무기 수", this.weapons.length + "종"],
     ];
     for (const [k, v] of rows) {
@@ -1923,6 +1945,9 @@ class Game {
   /* ── FX ── */
   _shake(i, d) { this.shakeI = i; this.shakeT = d; }
   _spawnParticles(x, y, cnt, col) {
+    /* cap particles for performance on high enemy counts */
+    const budget = 400;
+    if (this.particles.length > budget) cnt = max(1, floor(cnt * 0.3));
     for (let i = 0; i < cnt; i++) {
       const a = rand(0, TAU), sp = rand(1, 3.5);
       this.particles.push({ x, y, vx: cos(a) * sp, vy: sin(a) * sp, col, r: rand(2, 4.5), life: rand(0.25, 0.5), maxLife: 0.5, a: 1 });
@@ -2090,7 +2115,7 @@ class Game {
       c.fillRect(-g.r, -g.r, g.r * 2, g.r * 2); c.restore();
     }
 
-    /* ── enemies ── */
+    /* ── enemies (skip off-screen for perf) ── */
     for (const e of this.enemies) {
       const sx = toX(e.x), sy = toY(e.y);
       if (sx < -50 || sx > sw + 50 || sy < -50 || sy > sh + 50) continue;
