@@ -918,7 +918,7 @@ class Game {
     const joyEl = document.getElementById("joy-sens");
     if (joyEl) this.settings.joySens = parseInt(joyEl.value);
     const mapEl = document.getElementById("map-select");
-    if (mapEl && !mapEl.selectedOptions[0].disabled) this.settings.map = mapEl.value;
+    if (mapEl && mapEl.selectedOptions.length && !mapEl.selectedOptions[0].disabled) this.settings.map = mapEl.value;
     saveSettings(this.settings);
     this.sfx.setSfxVol(this.settings.sfxVol / 100);
     this.sfx.setBgmVol(this.settings.bgmVol / 100);
@@ -2368,9 +2368,10 @@ class Game {
     for (const wb of this.windBursts) {
       c.save();
       c.globalAlpha = max(0, 1 - wb.rad / wb.maxRad) * 0.4;
-      c.strokeStyle = "#b0bec5"; c.lineWidth = 6;
+      const wbCol = wb.col || "#b0bec5";
+      c.strokeStyle = wbCol; c.lineWidth = 6;
       c.beginPath(); c.arc(toX(wb.x), toY(wb.y), wb.rad, 0, TAU); c.stroke();
-      c.fillStyle = "rgba(176,190,197,.05)"; c.fill();
+      c.fillStyle = wbCol; c.globalAlpha *= 0.12; c.fill();
       c.restore();
     }
 
