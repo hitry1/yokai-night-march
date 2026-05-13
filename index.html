@@ -45,8 +45,11 @@
       <div id="best-record" class="best-record"></div>
       <div id="menu-gold" class="menu-gold">💰 0</div>
       <button id="btn-play" class="btn btn-primary">게임 시작</button>
+      <button id="btn-daily" class="btn btn-primary" style="background:linear-gradient(135deg,#ff6b6b,#ff9800);margin-top:8px;">🎯 일일 챌린지</button>
       <div class="menu-btns">
         <button id="btn-shop" class="btn btn-secondary">🏪 영구 강화</button>
+        <button id="btn-achievements" class="btn btn-secondary">🏆 업적</button>
+        <button id="btn-leaderboard" class="btn btn-secondary">📊 리더보드</button>
         <button id="btn-settings" class="btn btn-secondary">⚙️ 설정</button>
       </div>
       <p class="hint">이동: WASD / 방향키 / 터치 | 무기 자동 공격 | 일시정지: ESC</p>
@@ -60,6 +63,45 @@
       <p class="screen-subtitle">클릭하여 게임을 시작하세요</p>
       <div id="char-list" class="char-list"></div>
       <button id="btn-back-chars" class="btn btn-secondary">← 돌아가기</button>
+    </div>
+  </div>
+
+  <!-- Shop (Meta Upgrades) -->
+  <!-- Achievement Screen -->
+  <div id="screen-achievements" class="ov hidden">
+    <div class="ov-box wide-box">
+      <h2 class="screen-title">🏆 업적</h2>
+      <div id="achievement-progress" class="achievement-progress"></div>
+      <div id="achievement-list" class="achievement-list"></div>
+      <button id="btn-back-achievements" class="btn btn-secondary">← 돌아가기</button>
+    </div>
+  </div>
+
+  <!-- Leaderboard Screen -->
+  <div id="screen-leaderboard" class="ov hidden">
+    <div class="ov-box wide-box">
+      <h2 class="screen-title">📊 리더보드</h2>
+      <div class="leaderboard-tabs">
+        <button id="tab-easy" class="tab-btn">🟢 쉬움</button>
+        <button id="tab-normal" class="tab-btn active">🟡 보통</button>
+        <button id="tab-hard" class="tab-btn">🔴 어려움</button>
+        <button id="tab-nightmare" class="tab-btn">💀 악몽</button>
+      </div>
+      <div id="leaderboard-list" class="leaderboard-list"></div>
+      <div id="leaderboard-loading" class="leaderboard-loading hidden"> loading...</div>
+      <button id="btn-back-leaderboard" class="btn btn-secondary">← 돌아가기</button>
+    </div>
+  </div>
+
+  <!-- Daily Challenge Screen -->
+  <div id="screen-daily" class="ov hidden">
+    <div class="ov-box">
+      <h2 class="screen-title">🎯 일일 챌린지</h2>
+      <p class="screen-subtitle">오늘의挑战을 완료하세요!</p>
+      <div id="daily-challenge" class="daily-challenge"></div>
+      <div id="daily-best" class="daily-best"></div>
+      <button id="btn-start-daily" class="btn btn-primary" style="background:linear-gradient(135deg,#ff6b6b,#ff9800)">챌린지 시작</button>
+      <button id="btn-back-daily" class="btn btn-secondary" style="margin-top:10px">← 돌아가기</button>
     </div>
   </div>
 
@@ -108,6 +150,11 @@
             <option value="bamboo" selected>🎋 대나무 숲</option>
           </select>
         </div>
+        <div class="setting-row">
+          <label for="endless-toggle">엔드리스 모드</label>
+          <input type="checkbox" id="endless-toggle">
+          <span class="vol-val" id="endless-label">OFF</span>
+        </div>
       </div>
       <button id="btn-back-settings" class="btn btn-secondary">← 저장 후 돌아가기</button>
     </div>
@@ -137,9 +184,20 @@
       <div id="end-stats"></div>
       <div id="gold-earned" class="gold-earned"></div>
       <div class="end-btns">
+        <button id="btn-share" class="btn btn-primary" style="background:linear-gradient(135deg,#25d366,#128c7e)">📤 결과 공유</button>
         <button id="btn-retry" class="btn btn-primary">다시 하기</button>
+        <button id="btn-ngplus" class="btn btn-primary hidden" style="background:linear-gradient(135deg,#f44336,#ff9800)">🔥 NG+ 도전</button>
         <button id="btn-to-menu" class="btn btn-secondary">메뉴로</button>
       </div>
+    </div>
+  </div>
+
+  <!-- Artifact Select -->
+  <div id="screen-artifact" class="ov hidden">
+    <div class="ov-box">
+      <h2 class="lvl-title">유물 선택</h2>
+      <p class="screen-subtitle">이번 런에 사용할 유물을 선택하세요</p>
+      <div id="artifact-list" class="char-list" style="justify-content:center"></div>
     </div>
   </div>
 

@@ -28,7 +28,69 @@ const KEYS = {
   stats: "yokai_stats",
   settings: "yokai_settings",
   unlocks: "yokai_unlocks",
+  achievements: "yokai_achievements",
 };
+
+/* ─── SUPABASE CONFIG (온라인 리더보드용) ─── */
+// 아래 값을 실제 Supabase 프로젝트 정보로 교체하세요
+const SUPABASE_CONFIG = {
+  url: "YOUR_SUPABASE_URL",      // 예: "https://xxxxx.supabase.co"
+  key: "YOUR_SUPABASE_ANON_KEY", // 예: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+  table: "leaderboard"          // 테이블명
+};
+
+function isOnlineLeaderboardConfigured() {
+  return SUPABASE_CONFIG.url !== "YOUR_SUPABASE_URL";
+}
+
+/* ─── ONLINE LEADERBOARD ─── */
+async function fetchOnlineLeaderboard(difficulty) {
+  if (!isOnlineLeaderboardConfigured()) return [];
+
+  try {
+    const response = await fetch(
+      `${SUPABASE_CONFIG.url}/rest/v1/${SUPABASE_CONFIG.table}?difficulty=eq.${difficulty}&order=time.asc&limit=10`,
+      {
+        headers: {
+          "apikey": SUPABASE_CONFIG.key,
+          "Authorization": `Bearer ${SUPABASE_CONFIG.key}`
+        }
+      }
+    );
+    if (!response.ok) throw new Error("Failed to fetch");
+    return await response.json();
+  } catch (e) {
+    console.warn("Online leaderboard fetch failed:", e);
+    return [];
+  }
+}
+
+async function submitOnlineScore(name, time, kills, level, difficulty, character) {
+  if (!isOnlineLeaderboardConfigured()) return false;
+
+  try {
+    const response = await fetch(
+      `${SUPABASE_CONFIG.url}/rest/v1/${SUPABASE_CONFIG.table}`,
+      {
+        method: "POST",
+        headers: {
+          "apikey": SUPABASE_CONFIG.key,
+          "Authorization": `Bearer ${SUPABASE_CONFIG.key}`,
+          "Content-Type": "application/json",
+          "Prefer": "return=minimal"
+        },
+        body: JSON.stringify({
+          name, time, kills, level, difficulty, character,
+          created_at: new Date().toISOString()
+        })
+      }
+    );
+    return response.ok;
+  } catch (e) {
+    console.warn("Online score submit failed:", e);
+    return false;
+  }
+}
 
 function _load(key, fallback) {
   try {
@@ -64,16 +126,17 @@ function saveMeta(v) { _save(KEYS.meta, v); }
 function loadCStats() {
   return _load(KEYS.stats, {
     totalKills: 0, totalGold: 0, totalRuns: 0, totalTime: 0,
-    totalDmg: 0, gamesWon: 0, bossKills: 0, evolvedWeapons: [],
+    totalDmg: 0, gamesWon: 0, bossKills: 0, eliteKills: 0, evolvedWeapons: [],
     maxSurvivalTime: 0, highestLevel: 0,
     nightmareMaxTime: 0, seaCleared: 0,
+    usedArtifacts: [], synergyCount: 0, unlockedCharacters: [],
   });
 }
 function saveCStats(v) { _save(KEYS.stats, v); }
 
 /* settings */
 function loadSettings() {
-  return _load(KEYS.settings, { sfxVol: 50, bgmVol: 30, difficulty: "normal", joySens: 100, map: "bamboo" });
+  return _load(KEYS.settings, { sfxVol: 50, bgmVol: 30, difficulty: "normal", joySens: 100, map: "bamboo", endless: false, ngPlus: 0 });
 }
 function saveSettings(v) { _save(KEYS.settings, v); }
 
@@ -82,6 +145,12 @@ function loadUnlocks() {
   return _load(KEYS.unlocks, { characters: ["exorcist", "shaman"] });
 }
 function saveUnlocks(v) { _save(KEYS.unlocks, v); }
+
+/* achievements */
+function loadAchievements() {
+  return _load(KEYS.achievements, {});
+}
+function saveAchievements(v) { _save(KEYS.achievements, v); }
 
 function showBestRecord() {
   const el = document.getElementById("best-record");
@@ -93,9 +162,33 @@ function showBestRecord() {
   el.textContent = `최고 기록: ${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")} | ${b.kills} KILLS | Lv ${b.level}`;
 }
 
+/* ─── BGM DEFINITIONS ─── */
+// 실제 BGM 파일 경로 (게임 음원 폴더 기준)
+const BGM_FILES = {
+  menu: "Before_the_Map_Unfolds.mp3",
+  gameStart: "Before_The_First_Blade.mp3",
+  battleEarly: "The_Last_Life.mp3",
+  battleMid: "The_Iron_Toll.mp3",
+  battleLate: "Siege_of_the_Thousand_Eyes.mp3",
+  elite: "Midnight_Mask_Parade.mp3",
+  magic: "Sugar_Spun_Cannonade.mp3",
+  boss: "The_Gatekeeper_s_Wait.mp3",
+  bossAction: "Blade_Against_the_Throne.mp3",
+  final: "The_Last_Breach.mp3",
+  hpDanger: "One_Heart_Remaining.mp3",
+  victory: "Throne_of_the_Setting_Sun.mp3",
+  shop: "Hearth_and_Anvil.mp3",
+};
+
+const BGM_BASE_PATH = "게임 음원/";  // game.js 기준 (같은 디렉토리)
+
 /* ─── AUDIO ─── */
 class Sfx {
-  constructor() { this.ac = null; this.g = null; this.on = true; this.sfxVol = 0.5; this.bgmVol = 0.3; }
+  constructor() {
+    this.ac = null; this.g = null; this.on = true; this.sfxVol = 0.5; this.bgmVol = 0.3;
+    this.bgmPlaying = false; this.bgmTimer = null; this.currentBgm = null; this.bgmAudio = null;
+    this.bgmLoaded = {};
+  }
   init() {
     if (this.ac) return;
     try {
@@ -170,22 +263,70 @@ class Sfx {
     else if (t === "trident" || t === "tidalStorm") this._t(0.06, 500, 900, "triangle", 0.08);
   }
 
-  bgmStart() {
-    if (!this.ac || this.bgmPlaying) return;
-    this.bgmPlaying = true;
-    const notes = [196, 220, 262, 294, 330, 294, 262, 220];
-    let idx = 0;
-    const playNote = () => {
-      if (!this.bgmPlaying || !this.on) return;
-      const f = notes[idx % notes.length];
-      this._t(0.35, f, f * 0.998, "sine", 0.035, true);
-      this._t(0.35, f * 1.5, f * 1.498, "triangle", 0.018, true);
-      idx++;
-      this.bgmTimer = setTimeout(playNote, 450);
-    };
-    playNote();
+  bgmStart(type = "battleEarly") {
+    if (!this.ac) return;
+    this.playBgm(type);
   }
-  bgmStop() { this.bgmPlaying = false; if (this.bgmTimer) clearTimeout(this.bgmTimer); }
+
+  async playBgm(type) {
+    if (!this.on) return;
+
+    // Stop current BGM
+    if (this.bgmAudio) {
+      this.bgmAudio.pause();
+      this.bgmAudio = null;
+    }
+    if (this.bgmTimer) {
+      clearTimeout(this.bgmTimer);
+      this.bgmTimer = null;
+    }
+
+    // Get BGM file
+    const bgmFile = BGM_FILES[type];
+    if (!bgmFile) return;
+
+    // Check if already loaded
+    if (!this.bgmLoaded[type]) {
+      try {
+        // Create audio element
+        const audio = new Audio(BGM_BASE_PATH + bgmFile);
+        audio.loop = true;
+        audio.volume = this.bgmVol * 0.5;
+
+        // Load and play
+        await audio.play().catch(() => {}); // Auto-play
+
+        this.bgmLoaded[type] = audio;
+        this.bgmAudio = audio;
+        this.bgmPlaying = true;
+        this.currentBgm = type;
+      } catch (e) {
+        console.warn("BGM load failed:", bgmFile, e);
+      }
+    } else {
+      // Use cached audio
+      this.bgmAudio = this.bgmLoaded[type];
+      this.bgmAudio.currentTime = 0;
+      this.bgmAudio.volume = this.bgmVol * 0.5;
+      this.bgmAudio.play().catch(() => {});
+      this.bgmPlaying = true;
+      this.currentBgm = type;
+    }
+  }
+
+  bgmStop() {
+    this.bgmPlaying = false;
+    if (this.bgmTimer) clearTimeout(this.bgmTimer);
+    if (this.bgmAudio) {
+      this.bgmAudio.pause();
+      this.bgmAudio = null;
+    }
+  }
+
+  bgmSetVolume(v) {
+    this.bgmVol = v;
+    if (this.bgmAudio) this.bgmAudio.volume = v * 0.5;
+  }
 }
 
 /* ─── MATH ─── */
@@ -565,7 +706,154 @@ const MAPS = {
     unlocked: false, unlockCheck: (s) => s.gamesWon >= 2,
     unlockDesc: "2회 클리어",
   },
+  forest: {
+    name: "잠든 숲", emoji: "🌲", desc: "음울한 숲. 적 이동속도 +20%, 출현량 +30%",
+    bg: "#0a1a0a", gridCol: "rgba(40,80,40,.05)", bamboo: false, moon: true,
+    waterZones: false, graveFx: false,
+    enemySpeedMul: 1.2, enemySpawnMul: 1.3,
+    unlocked: false, unlockCheck: (s) => s.totalKills >= 100,
+    unlockDesc: "누적 100 처치",
+  },
+  dokkabong: {
+    name: "도깨비 성", emoji: "🏰", desc: "도깨비들의 성. 다량의 엘리트 적 출현",
+    bg: "#1a0a0a", gridCol: "rgba(80,40,40,.05)", bamboo: false, moon: false,
+    waterZones: false, graveFx: false,
+    enemyHpMul: 1.4, eliteSpawnMul: 2,
+    spawnOverride: [
+      { t: 0, types: ["dokkaebi", "dokkaebi"] },
+      { t: 30, types: ["dokkaebi", "dokkaKing"] },
+      { t: 60, types: ["dokkaebi", "dokkaKing", "wisp"] },
+      { t: 90, types: ["dokkaKing", "wisp", "ghost"] },
+      { t: 120, types: ["dokkaKing", "dokkaKing", "ghost", "jangsan"] },
+      { t: 180, types: ["dokkaKing", "dokkaKing", "ghost", "jangsan", "bulgasari"] },
+      { t: 240, types: ["dokkaKing", "ghost", "jangsan", "bulgasari", "haetae"] },
+    ],
+    unlocked: false, unlockCheck: (s) => s.gamesWon >= 3,
+    unlockDesc: "3회 클리어",
+  },
 };
+
+/* ─── DAILY CHALLENGES ─── */
+const DAILY_CHALLENGES = [
+  { id: "fast", name: "속도전", desc: "이동속도 +50%", effect: { spdMul: 1.5 } },
+  { id: "pow", name: "힘의 질주", desc: "공격력 +40%, 방어력 -30%", effect: { dmgMul: 1.4, armorMul: 0.7 } },
+  { id: "tiny", name: "미니 체력", desc: "HP 50%,攻击力 +30%", effect: { hpMul: 0.5, dmgMul: 1.3 } },
+  { id: "gold", name: "황금 전장", desc: "골드 +100%, 경험치 -30%", effect: { goldMul: 2, xpMul: 0.7 } },
+  { id: "magnet", name: "자석 전사", desc: "아이템 탐지 범위 +100%", effect: { magnetMul: 2 } },
+  { id: "slowmo", name: "슬로모", desc: "적 이동속도 50%", effect: { enemySpdMul: 0.5 } },
+  { id: "flood", name: "대홍수", desc: "물 지대 전체 맵", effect: { waterEverywhere: true } },
+  { id: "boss", name: "보스 러시", desc: "보스 5분마다 출현", effect: { bossInterval: 300 } },
+  { id: "blade", name: "검만들", desc: "무기: 퇴마검 only", effect: { weaponOnly: "blade" } },
+  { id: "fire", name: "불꽃 날개", desc: "무기: 부적불꽃 only", effect: { weaponOnly: "fire" } },
+  { id: "noHeal", name: "고통의 길", desc: "HP 재생 없음", effect: { noRegen: true } },
+  { id: "tinyMap", name: "좁은 전장", desc: "맵 크기 50%", effect: { mapSizeMul: 0.5 } },
+];
+
+function getDailyChallenge() {
+  const today = new Date();
+  const seed = today.getFullYear() * 10000 + (today.getMonth() + 1) * 100 + today.getDate();
+  const idx = seed % DAILY_CHALLENGES.length;
+  return DAILY_CHALLENGES[idx];
+}
+
+function loadDailyStats() {
+  return _load("yokai_daily", { lastDate: "", bestTime: 0, completed: false });
+}
+function saveDailyStats(v) { _save("yokai_daily", v); }
+
+/* ─── ACHIEVEMENTS ─── */
+const ACHIEVEMENTS = {
+  // 처치 관련
+  firstBlood:       { name: "첫 번째 희생자", desc: "첫 적 1 처치", icon: "⚔️", reward: 50 },
+  kill10:           { name: "초보 사냥꾼",   desc: "적 10 처치", icon: "🎯", reward: 100 },
+  kill50:           { name: "중급 사냥꾼",   desc: "적 50 처치", icon: "🏹", reward: 200 },
+  kill100:          { name: "고급 사냥꾼",   desc: "적 100 처치", icon: "💀", reward: 300 },
+  kill500:          { name: "숙련 사냥꾼",   desc: "적 500 처치", icon: "🩸", reward: 500 },
+  kill1000:         { name: "대名师",       desc: "적 1000 처치", icon: "🔥", reward: 1000 },
+  // 보스/엘리트
+  killElite:        { name: "엘리트 사냥",   desc: "엘리트 적 1 처치", icon: "⭐", reward: 100 },
+  kill5Elite:       { name: "엘리트 학살자", desc: "엘리트 5 처치", icon: "🌟", reward: 300 },
+  killBoss:         { name: "보스 사냥",    desc: "보스 1 처치", icon: "👹", reward: 200 },
+  kill10Boss:       { name: "보스 전문가",   desc: "보스 10 처치", icon: "👺", reward: 1000 },
+  // 생존
+  survive1min:      { name: "1분 생존",     desc: "1분 동안 생존", icon: "⏱️", reward: 50 },
+  survive3min:      { name: "3분 생존",     desc: "3분 동안 생존", icon: "⌛", reward: 100 },
+  survive5min:      { name: "5분 생존",     desc: "5분 동안 생존", icon: "⏳", reward: 200 },
+  survive10min:     { name: "완주",         desc: "10분 클리어", icon: "🏆", reward: 500 },
+  // 레벨
+  lv10:             { name: "레벨 10",     desc: "레벨 10 도달", icon: "🔟", reward: 200 },
+  lv30:             { name: "레벨 30",     desc: "레벨 30 도달", icon: "🔝", reward: 500 },
+  lv50:             { name: "레벨 50",     desc: "레벨 50 도달", icon: "🌟", reward: 1000 },
+  // 무기
+  maxWeapon:       { name: "무기大师",     desc: "무기 최대 레벨", icon: "⚔️", reward: 300 },
+  evolveWeapon:    { name: "무기 진화",    desc: "무기 1회 진화", icon: "✨", reward: 400 },
+  evolve3Weapon:   { name: "진화 마스터",  desc: "무기 3회 진화", icon: "💫", reward: 1000 },
+  // 캐릭터
+  unlockChar:      { name: "새 얼굴",      desc: "캐릭터 1명 해금", icon: "👤", reward: 100 },
+  unlockAllChar:   { name: "캐릭터 컬렉터", desc: "모든 캐릭터 해금", icon: "👥", reward: 2000 },
+  // 맵
+  clearBamboo:     { name: "대나무 종결자", desc: "대나무 숲 클리어", icon: "🎋", reward: 200 },
+  clearGraveyard:  { name: "고인 종결자",   desc: "지하묘지 클리어", icon: "⚰️", reward: 300 },
+  clearSea:        { name: "해적",         desc: "바다 맵 클리어", icon: "🌊", reward: 400 },
+  clearForest:     { name: "숲 파수관",    desc: "잠든 숲 클리어", icon: "🌲", reward: 400 },
+  clearDokkabong:  { name: "도깨비 왕",    desc: "도깨비 성 클리어", icon: "🏰", reward: 500 },
+  // 난이도
+  clearNormal:     { name: "일반 클리어",  desc: "보통 난이도 클리어", icon: "🟡", reward: 100 },
+  clearHard:       { name: "困难克星",    desc: "어려움 난이도 클리어", icon: "🔴", reward: 300 },
+  clearNightmare:  { name: "악몽 종결자",  desc: "악몽 난이도 클리어", icon: "💀", reward: 1000 },
+  clearNightmare10:{ name: "진정한 악몽",  desc: "악몽 10분 생존", icon: "🌑", reward: 2000 },
+  // 골드/메타
+  gold100:         { name: "골드 수집가", desc: "누적 골드 100", icon: "💰", reward: 100 },
+  gold1000:        { name: "부자",        desc: "누적 골드 1000", icon: "💎", reward: 500 },
+  gold10000:       { name: "대부호",      desc: "누적 골드 10000", icon: "👑", reward: 2000 },
+  maxUpgrade:      { name: "최대 강화",    desc: "하나의 강화 최대", icon: "⬆️", reward: 300 },
+  // 엔드리스/NG+
+  endlessWin:      { name: "엔드리스 클리어", desc: "엔드리스 모드 클리어", icon: "♾️", reward: 500 },
+  ngPlus1:         { name: "NG+ 시작",    desc: "NG+ 1회차 클리어", icon: "🔁", reward: 300 },
+  ngPlus3:         { name: "NG+ 3회차",   desc: "NG+ 3회차 클리어", icon: "🔂", reward: 1000 },
+  //特殊な
+  noDamage:        { name: "무적",        desc: "클리어 시 피해 0", icon: "🛡️", reward: 500 },
+  hp1Survive:      { name: "죽음의邊緣",  desc: "HP 1로 클리어", icon: "💖", reward: 300 },
+  fullHpWin:       { name: "완벽한 승리", desc: "Full HP로 클리어", icon: "💚", reward: 400 },
+  soloWeapon:      { name: "단일 무기",   desc: "무기 1개만으로 클리어", icon: "🤝", reward: 500 },
+  fastClear:       { name: "속도전",      desc: "8분 이내 클리어", icon: "⚡", reward: 600 },
+  // 유물
+  useArtifact:     { name: "유물 수집가", desc: "유물 1회 사용", icon: "🏮", reward: 100 },
+  useAllArtifact: { name: "유물 탐험가", desc: "모든 유물 사용", icon: "🪝", reward: 1000 },
+  // 시너지
+  synergy1:        { name: "시너지的第一步", desc: "시너지 1회 발동", icon: "🔗", reward: 100 },
+  synergy10:       { name: "시너지 마스터", desc: "시너지 10회 발동", icon: "💫", reward: 500 },
+  // 시간대별
+  midnightClear:  { name: "자정 사냥",    desc: "자정 시간대에 클리어", icon: "🌙", reward: 300 },
+  morningClear:   { name: "새벽 사냥",    desc: "아침 시간대에 클리어", icon: "🌅", reward: 300 },
+};
+
+/* ─── ARTIFACTS (picked at run start, 1 per run) ─── */
+const ARTIFACTS = {
+  soulLantern:  { name: "혼등",     icon: "🏮", desc: "처치 시 5% 확률로 HP 5 회복", effect: "killHeal5" },
+  dragonScale:  { name: "용린",     icon: "🐉", desc: "받는 피해 20% 감소",           effect: "dmgReduce20" },
+  spiritMirror: { name: "영혼거울", icon: "🪞", desc: "크리티컬 확률 10% → 20%",      effect: "critUp" },
+  jadeBell:     { name: "옥방울",   icon: "🔔", desc: "무기 쿨타임 15% 감소",         effect: "cdReduce15" },
+  goldenFan:    { name: "금선",     icon: "🪭", desc: "골드 획득 50% 증가",           effect: "goldUp50" },
+  moonStone:    { name: "월석",     icon: "💎", desc: "경험치 25% 증가",              effect: "xpUp25" },
+  tigerClaw:    { name: "호조",     icon: "🐅", desc: "공격력 15% 증가",              effect: "dmgUp15" },
+  windCharm:    { name: "풍부",     icon: "🎐", desc: "이동속도 20% 증가",            effect: "spdUp20" },
+  ironTortle:   { name: "철거북",   icon: "🐢", desc: "최대 HP +50",                  effect: "hpUp50" },
+  foxBead:      { name: "여우구슬", icon: "🔮", desc: "보스 피해 30% 증가",           effect: "bossDmg30" },
+};
+
+/* ─── SYNERGY (character + weapon bonus) ─── */
+const SYNERGIES = [
+  { char: "exorcist",    wpn: "blade",     name: "퇴마 달인",  desc: "퇴마검 피해 +25%",      bonus: { wpnDmgMul: 1.25, wpnType: "blade" } },
+  { char: "shaman",      wpn: "fire",      name: "부적 명인",  desc: "부적불꽃 쿨타임 -20%",   bonus: { wpnCdMul: 0.8, wpnType: "fire" } },
+  { char: "taoist",      wpn: "frost",     name: "빙결 도술",  desc: "빙결 범위 +30%",         bonus: { wpnRadMul: 1.3, wpnType: "frost" } },
+  { char: "hunter",      wpn: "lightning",  name: "뇌격 사냥",  desc: "번개 대상 +2",           bonus: { wpnExtra: 2, wpnType: "lightning" } },
+  { char: "monk",        wpn: "aura",      name: "불법 수행",  desc: "혼령장 범위 +40%",       bonus: { wpnRadMul: 1.4, wpnType: "aura" } },
+  { char: "foxSpirit",   wpn: "curseMist", name: "요기 해방",  desc: "저주안개 피해 +30%",     bonus: { wpnDmgMul: 1.3, wpnType: "curseMist" } },
+  { char: "reaper",      wpn: "scythe",    name: "사신 일격",  desc: "사신낫 범위 +25%",       bonus: { wpnRadMul: 1.25, wpnType: "scythe" } },
+  { char: "mountainGod", wpn: "quake",     name: "산신 격진",  desc: "지진파 스턴 +50%",       bonus: { wpnStunMul: 1.5, wpnType: "quake" } },
+  { char: "seaDiver",    wpn: "trident",   name: "용궁 창술",  desc: "해류창 관통 +3",         bonus: { wpnExtra: 3, wpnType: "trident" } },
+];
 
 /* ─── DIFFICULTY ─── */
 const DIFFICULTIES = {
@@ -617,9 +905,17 @@ class Game {
       if (ch.unlockCheck && ch.unlockCheck(this.cStats)) {
         this.unlocks.characters.push(id);
         changed = true;
+        // Track in cStats for achievements
+        if (!this.cStats.unlockedCharacters) this.cStats.unlockedCharacters = [];
+        if (!this.cStats.unlockedCharacters.includes(id)) {
+          this.cStats.unlockedCharacters.push(id);
+        }
       }
     }
-    if (changed) saveUnlocks(this.unlocks);
+    if (changed) {
+      saveUnlocks(this.unlocks);
+      saveCStats(this.cStats);
+    }
   }
 
   /* ── UI ── */
@@ -629,25 +925,49 @@ class Game {
       hud: $("hud"), menu: $("screen-menu"), lvl: $("screen-lvl"),
       pause: $("screen-pause"), end: $("screen-end"),
       charSelect: $("screen-chars"), shop: $("screen-shop"), settings: $("screen-settings"),
+      achievements: $("screen-achievements"), daily: $("screen-daily"),
+      leaderboard: $("screen-leaderboard"),
+      dailyChallenge: $("daily-challenge"), dailyBest: $("daily-best"),
+      artifactScreen: $("screen-artifact"),
       hpBar: $("hp-bar"), hpTxt: $("hp-txt"), xpBar: $("xp-bar"), lvTxt: $("lv-txt"),
       timer: $("timer"), kills: $("kills"), wslots: $("weapon-slots"),
       choices: $("choices"), endTitle: $("end-title"), endStats: $("end-stats"),
       joyZone: $("joy-zone"), menuGold: $("menu-gold"), hudGold: $("hud-gold"),
       diffBadge: $("diff-badge"), charList: $("char-list"),
       shopList: $("shop-list"), shopGold: $("shop-gold"),
+      achievementList: $("achievement-list"), achievementProgress: $("achievement-progress"),
       goldEarned: $("gold-earned"), announceBar: $("announce-bar"),
     };
 
     /* menu buttons */
     $("btn-play").onclick = () => this._showCharSelect();
     $("btn-shop").onclick = () => this._showShop();
+    $("btn-achievements").onclick = () => this._showAchievements();
+    $("btn-daily").onclick = () => this._showDaily();
+    $("btn-leaderboard").onclick = () => this._showLeaderboard();
     $("btn-settings").onclick = () => this._showSettings();
+
+    /* leaderboard tabs */
+    $("tab-easy").onclick = () => this._loadLeaderboard("easy");
+    $("tab-normal").onclick = () => this._loadLeaderboard("normal");
+    $("tab-hard").onclick = () => this._loadLeaderboard("hard");
+    $("tab-nightmare").onclick = () => this._loadLeaderboard("nightmare");
+
+    /* daily challenge */
+    $("btn-start-daily").onclick = () => this._startDailyChallenge();
+    $("btn-back-daily").onclick = () => this._showMenu();
+
+    /* leaderboard */
+    $("btn-back-leaderboard").onclick = () => this._showMenu();
 
     /* char select */
     $("btn-back-chars").onclick = () => this._showMenu();
 
     /* shop */
     $("btn-back-shop").onclick = () => this._showMenu();
+
+    /* achievements */
+    $("btn-back-achievements").onclick = () => this._showMenu();
 
     /* settings */
     $("btn-back-settings").onclick = () => { this._saveSettingsFromUI(); this._showMenu(); };
@@ -656,6 +976,14 @@ class Game {
     $("btn-resume").onclick = () => this._unpause();
     $("btn-retry").onclick = () => { showBestRecord(); this._showCharSelect(); };
     $("btn-to-menu").onclick = () => { showBestRecord(); this._showMenu(); };
+    $("btn-share").onclick = () => this._shareResult();
+
+    if ($("btn-ngplus")) $("btn-ngplus").onclick = () => {
+      this.settings.ngPlus = (this.settings.ngPlus || 0) + 1;
+      saveSettings(this.settings);
+      showBestRecord();
+      this._showArtifactSelect();
+    };
 
     /* sound toggle */
     this.ui.soundBtn = $("btn-sound");
@@ -724,7 +1052,7 @@ class Game {
   /* ── SCREEN NAVIGATION ── */
   _hideAll() {
     const screens = [this.ui.menu, this.ui.charSelect, this.ui.shop, this.ui.settings,
-      this.ui.hud, this.ui.lvl, this.ui.pause, this.ui.end];
+      this.ui.achievements, this.ui.daily, this.ui.leaderboard, this.ui.hud, this.ui.lvl, this.ui.pause, this.ui.end, this.ui.artifactScreen];
     for (const s of screens) if (s) s.classList.add("hidden");
     if (this.ui.joyZone) this.ui.joyZone.classList.add("hidden");
   }
@@ -735,6 +1063,7 @@ class Game {
     this._updateMenuGold();
     showBestRecord();
     this.ui.menu.classList.remove("hidden");
+    this.sfx.bgmStop();
   }
 
   _updateMenuGold() {
@@ -784,7 +1113,7 @@ class Game {
       if (isUnlocked) {
         card.onclick = () => {
           this.selectedChar = id;
-          this._startGame();
+          this._showArtifactSelect();
         };
       }
       box.appendChild(card);
@@ -797,6 +1126,7 @@ class Game {
     this.state = "shop";
     this.ui.shop.classList.remove("hidden");
     this._renderShop();
+    this.sfx.playBgm("shop");
   }
 
   _renderShop() {
@@ -855,6 +1185,206 @@ class Game {
     }
   }
 
+  /* ── ACHIEVEMENTS ── */
+  _showAchievements() {
+    this._hideAll();
+    this.state = "achievements";
+    this.ui.achievements.classList.remove("hidden");
+
+    const earned = loadAchievements();
+    const total = Object.keys(ACHIEVEMENTS).length;
+    const earnedCount = Object.keys(earned).length;
+
+    // Update progress display
+    const progressEl = this.ui.achievementProgress;
+    if (progressEl) progressEl.textContent = "🏆 " + earnedCount + " / " + total;
+
+    // Render achievement list
+    const box = this.ui.achievementList;
+    if (!box) return;
+    box.innerHTML = "";
+
+    for (const [id, a] of Object.entries(ACHIEVEMENTS)) {
+      const isEarned = !!earned[id];
+      const card = document.createElement("div");
+      card.className = "achievement-card" + (isEarned ? " earned" : "");
+
+      const icon = document.createElement("div");
+      icon.className = "achievement-icon";
+      icon.textContent = a.icon;
+
+      const info = document.createElement("div");
+      info.className = "achievement-info";
+      const name = document.createElement("div");
+      name.className = "achievement-name";
+      name.textContent = a.name;
+      const desc = document.createElement("div");
+      desc.className = "achievement-desc";
+      desc.textContent = a.desc;
+      const reward = document.createElement("div");
+      reward.className = "achievement-reward";
+      reward.textContent = "보상: " + a.reward + " 💰";
+
+      info.appendChild(name);
+      info.appendChild(desc);
+      info.appendChild(reward);
+
+      const status = document.createElement("div");
+      status.className = "achievement-status";
+      status.textContent = isEarned ? "✅" : "🔒";
+
+      card.appendChild(icon);
+      card.appendChild(info);
+      card.appendChild(status);
+      box.appendChild(card);
+    }
+  }
+
+  /* ── DAILY CHALLENGE ── */
+  _showDaily() {
+    this._hideAll();
+    this.state = "daily";
+    this.ui.daily.classList.remove("hidden");
+
+    const challenge = getDailyChallenge();
+    const stats = loadDailyStats();
+    const today = new Date().toDateString();
+
+    // Update challenge display
+    const box = this.ui.dailyChallenge;
+    box.innerHTML = "";
+
+    const nameEl = document.createElement("div");
+    nameEl.className = "daily-challenge-name";
+    nameEl.textContent = "🎯 " + challenge.name;
+
+    const descEl = document.createElement("div");
+    descEl.className = "daily-challenge-desc";
+    descEl.textContent = challenge.desc;
+
+    const timerEl = document.createElement("div");
+    timerEl.className = "daily-challenge-timer";
+    const now = new Date();
+    const tomorrow = new Date(now);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(0, 0, 0, 0);
+    const hoursLeft = Math.floor((tomorrow - now) / 3600000);
+    const minsLeft = Math.floor(((tomorrow - now) % 3600000) / 60000);
+    timerEl.textContent = "다음 챌린지까지: " + hoursLeft + "시간 " + minsLeft + "분";
+
+    box.appendChild(nameEl);
+    box.appendChild(descEl);
+    box.appendChild(timerEl);
+
+    // Update best record
+    const bestEl = this.ui.dailyBest;
+    if (stats.lastDate === today && stats.bestTime > 0) {
+      const m = Math.floor(stats.bestTime / 60);
+      const s = Math.floor(stats.bestTime % 60);
+      bestEl.innerHTML = `<span class="daily-completed">✅ 오늘 클리어! 최고 기록: ${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}</span>`;
+    } else if (stats.bestTime > 0) {
+      const m = Math.floor(stats.bestTime / 60);
+      const s = Math.floor(stats.bestTime % 60);
+      bestEl.textContent = "최고 기록: " + String(m).padStart(2,"0") + ":" + String(s).padStart(2,"0");
+    } else {
+      bestEl.textContent = "오늘의 챌린지를 완료해보세요!";
+    }
+  }
+
+  _startDailyChallenge() {
+    this.dailyChallenge = getDailyChallenge();
+    this.isDailyChallenge = true;
+    this._showCharSelect();
+  }
+
+  /* ── LEADERBOARD ── */
+  _showLeaderboard() {
+    this._hideAll();
+    this.state = "leaderboard";
+    this.ui.leaderboard.classList.remove("hidden");
+
+    // Update tab states
+    const tabs = document.querySelectorAll(".tab-btn");
+    tabs.forEach(t => t.classList.remove("active"));
+    document.getElementById("tab-normal")?.classList.add("active");
+
+    // Load default (normal) leaderboard
+    this._loadLeaderboard("normal");
+  }
+
+  async _loadLeaderboard(difficulty) {
+    // Update tab states
+    const tabs = document.querySelectorAll(".tab-btn");
+    tabs.forEach(t => t.classList.remove("active"));
+    document.getElementById("tab-" + difficulty)?.classList.add("active");
+
+    const box = document.getElementById("leaderboard-list");
+    if (!box) return;
+
+    // Show loading
+    const loading = document.getElementById("leaderboard-loading");
+    if (loading) loading.classList.remove("hidden");
+
+    // Try to fetch online leaderboard
+    let scores = [];
+    if (isOnlineLeaderboardConfigured()) {
+      scores = await fetchOnlineLeaderboard(difficulty);
+    }
+
+    // If no online data, use local scores as fallback
+    if (scores.length === 0) {
+      const localScores = loadScores();
+      scores = localScores
+        .filter(s => s.difficulty === difficulty && s.win)
+        .sort((a, b) => a.time - b.time)
+        .slice(0, 10)
+        .map((s, i) => ({
+          name: "나",
+          time: s.time,
+          kills: s.kills,
+          level: s.level,
+          character: s.character,
+          rank: i + 1
+        }));
+    } else {
+      scores = scores.map((s, i) => ({
+        ...s,
+        rank: i + 1
+      }));
+    }
+
+    // Hide loading
+    if (loading) loading.classList.add("hidden");
+
+    // Render
+    box.innerHTML = "";
+    if (scores.length === 0) {
+      box.innerHTML = "<div style='text-align:center;color:rgba(255,255,255,.5);padding:20px;'>아직 기록이 없습니다</div>";
+      return;
+    }
+
+    for (const s of scores) {
+      const m = Math.floor(s.time / 60);
+      const sec = Math.floor(s.time % 60);
+      const ch = s.character ? CHARACTERS[s.character] : null;
+
+      const entry = document.createElement("div");
+      entry.className = "leaderboard-entry";
+
+      const rankClass = s.rank === 1 ? "gold" : (s.rank === 2 ? "silver" : (s.rank === 3 ? "bronze" : ""));
+
+      entry.innerHTML = `
+        <div class="leaderboard-rank ${rankClass}">${s.rank}</div>
+        <div class="leaderboard-info">
+          <div class="leaderboard-name">${s.name || "Player"} ${ch ? ch.icon : ""}</div>
+          <div class="leaderboard-stats">Lv ${s.level} | ${s.kills} 처치 | ${s.character ? CHARACTERS[s.character]?.name : ""}</div>
+        </div>
+        <div class="leaderboard-score">${String(m).padStart(2,"0")}:${String(sec).padStart(2,"0")}</div>
+      `;
+      box.appendChild(entry);
+    }
+  }
+
   /* ── SETTINGS ── */
   _showSettings() {
     this._hideAll();
@@ -902,6 +1432,16 @@ class Game {
       };
     }
 
+    /* endless toggle */
+    const endlessEl = document.getElementById("endless-toggle");
+    if (endlessEl) {
+      endlessEl.checked = !!this.settings.endless;
+      document.getElementById("endless-label").textContent = this.settings.endless ? "ON" : "OFF";
+      endlessEl.onchange = () => {
+        document.getElementById("endless-label").textContent = endlessEl.checked ? "ON" : "OFF";
+      };
+    }
+
     /* live update listeners */
     document.getElementById("sfx-vol").oninput = (e) => {
       document.getElementById("sfx-val").textContent = e.target.value + "%";
@@ -919,14 +1459,65 @@ class Game {
     if (joyEl) this.settings.joySens = parseInt(joyEl.value);
     const mapEl = document.getElementById("map-select");
     if (mapEl && mapEl.selectedOptions.length && !mapEl.selectedOptions[0].disabled) this.settings.map = mapEl.value;
+    const endlessEl = document.getElementById("endless-toggle");
+    if (endlessEl) this.settings.endless = endlessEl.checked;
     saveSettings(this.settings);
     this.sfx.setSfxVol(this.settings.sfxVol / 100);
     this.sfx.setBgmVol(this.settings.bgmVol / 100);
   }
 
+  /* ── ARTIFACT SELECT ── */
+  _showArtifactSelect() {
+    this._hideAll();
+    this.state = "artifactSelect";
+    const screen = this.ui.artifactScreen;
+    if (!screen) { this.selectedArtifact = null; this._startGame(); return; }
+    screen.classList.remove("hidden");
+    const box = document.getElementById("artifact-list");
+    if (!box) { this.selectedArtifact = null; this._startGame(); return; }
+    while (box.firstChild) box.removeChild(box.firstChild);
+
+    /* pick 3 random artifacts */
+    const keys = Object.keys(ARTIFACTS);
+    for (let i = keys.length - 1; i > 0; i--) {
+      const j = floor(Math.random() * (i + 1));
+      [keys[i], keys[j]] = [keys[j], keys[i]];
+    }
+    const picks = keys.slice(0, 3);
+
+    for (const id of picks) {
+      const art = ARTIFACTS[id];
+      const card = document.createElement("div");
+      card.className = "choice-card";
+      const ic = document.createElement("div"); ic.className = "choice-icon"; ic.textContent = art.icon;
+      const nm = document.createElement("div"); nm.className = "choice-name"; nm.textContent = art.name;
+      const ds = document.createElement("div"); ds.className = "choice-desc"; ds.textContent = art.desc;
+      card.append(ic, nm, ds);
+      card.onclick = () => {
+        this.selectedArtifact = id;
+        screen.classList.add("hidden");
+        this._startGame();
+      };
+      box.appendChild(card);
+    }
+
+    /* skip option */
+    const skip = document.createElement("div");
+    skip.className = "choice-card"; skip.style.opacity = "0.6";
+    const skIc = document.createElement("div"); skIc.className = "choice-icon"; skIc.textContent = "➡️";
+    const skNm = document.createElement("div"); skNm.className = "choice-name"; skNm.textContent = "유물 없이 시작";
+    skip.append(skIc, skNm);
+    skip.onclick = () => {
+      this.selectedArtifact = null;
+      screen.classList.add("hidden");
+      this._startGame();
+    };
+    box.appendChild(skip);
+  }
+
   /* ── START GAME ── */
   _startGame() {
-    this.sfx.init(); this.sfx.resume(); this.sfx.bgmStart(); _eid = 0;
+    this.sfx.init(); this.sfx.resume(); this.sfx.bgmStart("gameStart"); _eid = 0;
     this._prevUnlocks = [...this.unlocks.characters]; // snapshot before run
     const cx = W / 2, cy = H / 2;
     const ch = CHARACTERS[this.selectedChar];
@@ -951,6 +1542,61 @@ class Game {
 
     /* apply difficulty xp modifier */
     xpMul *= diff.xpMul;
+
+    /* NG+ scaling */
+    const ngLv = this.settings.ngPlus || 0;
+    if (ngLv > 0) {
+      const ngScale = 1 + ngLv * 0.5; /* each NG+ = enemies +50% harder */
+      this._ngHpMul = ngScale;
+      this._ngDmgMul = 1 + ngLv * 0.3;
+      this._ngGoldMul = 1 + ngLv * 0.3;
+      goldMul *= this._ngGoldMul;
+    } else {
+      this._ngHpMul = 1; this._ngDmgMul = 1; this._ngGoldMul = 1;
+    }
+    this.ngPlus = ngLv;
+
+    /* apply artifact */
+    this.artifact = this.selectedArtifact ? ARTIFACTS[this.selectedArtifact] : null;
+    this.artifactId = this.selectedArtifact;
+    if (this.artifact) {
+      const eff = this.artifact.effect;
+      if (eff === "dmgReduce20") this._artDmgReduce = 0.8;
+      else this._artDmgReduce = 1;
+      if (eff === "cdReduce15") cdMul *= 0.85;
+      if (eff === "goldUp50") goldMul *= 1.5;
+      if (eff === "xpUp25") xpMul *= 1.25;
+      if (eff === "dmgUp15") dmgMul *= 1.15;
+      if (eff === "spdUp20") spd *= 1.2;
+      if (eff === "hpUp50") hp += 50;
+    } else {
+      this._artDmgReduce = 1;
+    }
+
+    /* apply daily challenge effects */
+    if (this.dailyChallenge && this.dailyChallenge.effect) {
+      const eff = this.dailyChallenge.effect;
+      if (eff.spdMul) spd *= eff.spdMul;
+      if (eff.dmgMul) dmgMul *= eff.dmgMul;
+      if (eff.armorMul) armor *= eff.armorMul;
+      if (eff.hpMul) hp *= eff.hpMul;
+      if (eff.goldMul) goldMul *= eff.goldMul;
+      if (eff.xpMul) xpMul *= eff.xpMul;
+      if (eff.magnetMul) magnetR *= eff.magnetMul;
+      if (eff.noRegen) regen = 0;
+    }
+
+    /* endless mode */
+    this.endless = !!this.settings.endless;
+
+    /* detect synergy */
+    this.activeSynergy = null;
+    for (const syn of SYNERGIES) {
+      if (syn.char === this.selectedChar && syn.wpn === ch.startWeapon) {
+        this.activeSynergy = syn;
+        break;
+      }
+    }
 
     this.diff = diff;
     this.goldMul = goldMul;
@@ -1016,6 +1662,9 @@ class Game {
   /* ═══════════════════ UPDATE ═══════════════════ */
   _update(dt) {
     this.elapsed += dt;
+
+    /* dynamic BGM based on time */
+    this._updateBgm();
 
     /* player movement */
     let mx = 0, my = 0;
@@ -1129,8 +1778,16 @@ class Game {
     this._updateHUD();
     /* lvl up */
     if (this.pendingLevelUps > 0 && this.state === "play") { this.pendingLevelUps--; this._showLevelUp(); }
-    /* victory */
-    if (this.elapsed >= SURVIVE) this._victory();
+    /* victory (skip in endless mode) */
+    if (this.elapsed >= SURVIVE && !this.endless) this._victory();
+    /* endless mode: spawn extra boss every 5 min after 10 min */
+    if (this.endless && this.elapsed >= SURVIVE) {
+      const extra = floor((this.elapsed - SURVIVE) / 300);
+      if (extra > (this._endlessBossCount || 0)) {
+        this._endlessBossCount = extra;
+        this._spawnBoss();
+      }
+    }
   }
 
   /* ── WAVE ANNOUNCEMENTS ── */
@@ -1180,12 +1837,13 @@ class Game {
   _spawnEnemy(type, x, y, mf) {
     const def = ETYPES[type]; const hpS = 1 + mf * 0.12;
     const diff = this.diff;
+    const ngHp = this._ngHpMul || 1, ngDmg = this._ngDmgMul || 1;
     this.enemies.push({
       id: ++_eid, type, x, y, r: def.r,
-      hp: Math.round(def.hp * hpS * diff.hpMul),
-      maxHp: Math.round(def.hp * hpS * diff.hpMul),
+      hp: Math.round(def.hp * hpS * diff.hpMul * ngHp),
+      maxHp: Math.round(def.hp * hpS * diff.hpMul * ngHp),
       spd: def.spd * diff.spdMul, col: def.col,
-      dmg: Math.round(def.dmg * diff.dmgMul), xp: def.xp,
+      dmg: Math.round(def.dmg * diff.dmgMul * ngDmg), xp: def.xp,
       boss: !!def.boss, elite: !!def.elite,
       hitT: 0, slowT: 0, slowF: 1,
       state: "chase", stateT: 0, atkT: 0, alpha: 1,
@@ -1215,6 +1873,35 @@ class Game {
     }
   }
 
+  _updateBgm() {
+    if (!this.sfx.bgmPlaying) return;
+
+    // Check if boss is present
+    const hasBoss = this.enemies.some(e => e.boss);
+
+    // HP below 30%
+    const hpRatio = this.p.hp / this.p.maxHp;
+
+    // Determine BGM based on conditions
+    let targetBgm = "battleEarly";
+    if (hasBoss) {
+      targetBgm = "boss";
+    } else if (hpRatio < 0.3) {
+      targetBgm = "hpDanger";
+    } else if (this.elapsed < 120) {
+      targetBgm = "battleEarly";
+    } else if (this.elapsed < 360) {
+      targetBgm = "battleMid";
+    } else {
+      targetBgm = "battleLate";
+    }
+
+    // Only change if different
+    if (this.sfx.currentBgm !== targetBgm) {
+      this.sfx.playBgm(targetBgm);
+    }
+  }
+
   _spawnBoss() {
     const def = ETYPES.gumiho, angle = rand(0, TAU);
     const diff = this.diff;
@@ -1238,10 +1925,27 @@ class Game {
   }
 
   /* ── WEAPONS ── */
+  /* synergy helper: get synergy-boosted lv stats */
+  _synLv(w, lv) {
+    if (!this.activeSynergy || this.activeSynergy.bonus.wpnType !== w.type) return lv;
+    const b = this.activeSynergy.bonus;
+    const out = { ...lv };
+    if (b.wpnDmgMul) out.dmg = Math.round((out.dmg || 0) * b.wpnDmgMul);
+    if (b.wpnCdMul && out.cd) out.cd = Math.round(out.cd * b.wpnCdMul);
+    if (b.wpnRadMul && out.rad) out.rad = Math.round(out.rad * b.wpnRadMul);
+    if (b.wpnStunMul && out.stunT) out.stunT = out.stunT * b.wpnStunMul;
+    if (b.wpnExtra) {
+      if (out.st !== undefined) out.st += b.wpnExtra;
+      if (out.prc !== undefined) out.prc += b.wpnExtra;
+    }
+    return out;
+  }
+
   _updateWeapons(dt) {
     const now = this.elapsed * 1000;
     for (const w of this.weapons) {
-      const def = getWDef(w.type), lv = def.lvs[w.lv];
+      const def = getWDef(w.type), rawLv = def.lvs[w.lv];
+      const lv = this._synLv(w, rawLv);
       switch (w.type) {
         case "blade": case "ghostSlash": this._wpnBlade(w, lv, dt, w.type); break;
         case "fire": case "ghostFlame": this._wpnFire(w, lv, now, w.type); break;
@@ -1458,7 +2162,7 @@ class Game {
       p.x += p.vx * dt * 60; p.y += p.vy * dt * 60; p.life -= dt;
       if (p.life <= 0) return false;
       if (dist(p, this.p) < p.r + this.p.r && this.p.invT <= 0) {
-        const raw = max(1, p.dmg - this.p.armor);
+        const raw = max(1, Math.round((p.dmg - this.p.armor) * (this._artDmgReduce || 1)));
         this.p.hp -= raw; this.p.invT = 0.5; this.p.flashT = 0.15; this.damageTaken += raw;
         this.sfx.dmg(); this._shake(4, 0.1);
         this._spawnParticles(this.p.x, this.p.y, 5, "#ef5350");
@@ -1565,7 +2269,7 @@ class Game {
 
       /* collision with player */
       if (dist(e, this.p) < e.r + this.p.r && this.p.invT <= 0 && e.alpha > 0.6) {
-        const raw = max(1, e.dmg - this.p.armor);
+        const raw = max(1, Math.round((e.dmg - this.p.armor) * (this._artDmgReduce || 1)));
         this.p.hp -= raw; this.p.invT = 0.5; this.p.flashT = 0.15; this.damageTaken += raw;
         this.sfx.dmg(); this._shake(6, 0.15);
         this._spawnParticles(this.p.x, this.p.y, 8, "#ef5350");
@@ -1783,8 +2487,11 @@ class Game {
   /* ── DAMAGE ── */
   _damageEnemy(e, baseDmg) {
     let dmg = Math.round(baseDmg * (this.p.dmgMul || 1));
+    /* boss damage artifact */
+    if (this.artifact && this.artifact.effect === "bossDmg30" && (e.boss || e.elite)) dmg = Math.round(dmg * 1.3);
     let crit = false;
-    if (Math.random() < 0.1) { dmg = Math.round(dmg * 2); crit = true; }
+    const critChance = (this.artifact && this.artifact.effect === "critUp") ? 0.2 : 0.1;
+    if (Math.random() < critChance) { dmg = Math.round(dmg * 2); crit = true; }
     /* reaper passive: 5% chance to deal 25% max HP as bonus damage */
     if (this.charPassive === "executeChance" && !e.boss && Math.random() < 0.05) {
       dmg += Math.round(e.maxHp * 0.25);
@@ -1800,7 +2507,13 @@ class Game {
   }
 
   _onEnemyKill(e) {
-    this.killCount++; this.sfx.kill(); this._spawnParticles(e.x, e.y, 12, e.col);
+    this.killCount++;
+    if (e.elite || e.boss) this.eliteKillCount = (this.eliteKillCount || 0) + 1;
+    this.sfx.kill(); this._spawnParticles(e.x, e.y, 12, e.col);
+    /* artifact: kill heal */
+    if (this.artifact && this.artifact.effect === "killHeal5" && Math.random() < 0.05) {
+      this.p.hp = min(this.p.hp + 5, this.p.maxHp);
+    }
 
     /* ghostSlash heal */
     const gsW = this.weapons.find(w => w.type === "ghostSlash");
@@ -2100,6 +2813,7 @@ class Game {
 
   _gameOver() {
     this.state = "end"; this.sfx.bgmStop();
+    this.sfx.playBgm("final");
     this.ui.endTitle.textContent = "게임 오버";
     this.ui.endTitle.style.color = "#ef5350";
     this.isNewRecord = saveScore({
@@ -2114,6 +2828,7 @@ class Game {
 
   _victory() {
     this.state = "end"; this.sfx.bgmStop(); this.sfx.win();
+    this.sfx.playBgm("victory");
     this.ui.endTitle.textContent = "🎉 퇴마 완료!";
     this.ui.endTitle.style.color = "#ffd93d";
     this.isNewRecord = saveScore({
@@ -2127,6 +2842,25 @@ class Game {
   }
 
   _finishRun(won) {
+    /* track daily challenge */
+    if (won && this.isDailyChallenge) {
+      const today = new Date().toDateString();
+      const stats = loadDailyStats();
+      if (stats.lastDate !== today || this.elapsed < stats.bestTime || stats.bestTime === 0) {
+        stats.lastDate = today;
+        stats.bestTime = this.elapsed;
+        stats.completed = true;
+        saveDailyStats(stats);
+      }
+    }
+
+    /* submit online leaderboard */
+    if (won && isOnlineLeaderboardConfigured()) {
+      const name = "Player" + Math.floor(Math.random() * 1000);
+      submitOnlineScore(name, this.elapsed, this.killCount, this.level,
+        this.settings.difficulty, this.selectedChar);
+    }
+
     /* end-of-run gold bonus */
     const timeBonus = Math.round(this.elapsed / 10);
     const killBonus = Math.round(this.killCount / 10);
@@ -2141,6 +2875,7 @@ class Game {
 
     /* update cumulative stats */
     this.cStats.totalKills += this.killCount;
+    this.cStats.eliteKills = (this.cStats.eliteKills || 0) + (this.eliteKillCount || 0);
     this.cStats.totalGold += this.goldEarned;
     this.cStats.totalRuns++;
     this.cStats.totalTime += this.elapsed;
@@ -2160,6 +2895,127 @@ class Game {
 
     /* check new unlocks */
     this._checkUnlocks();
+
+    /* check achievements */
+    this._checkAchievements(won);
+  }
+
+  _checkAchievements(won) {
+    const earned = loadAchievements();
+    const stats = this.cStats;
+    const settings = this.settings;
+    const newAchievements = [];
+
+    const check = (id, condition) => {
+      if (!earned[id] && condition) {
+        earned[id] = true;
+        const a = ACHIEVEMENTS[id];
+        if (a) {
+          this.gold += a.reward;
+          saveGold(this.gold);
+          newAchievements.push(a);
+        }
+      }
+    };
+
+    // 처치 관련
+    check("firstBlood", stats.totalKills >= 1);
+    check("kill10", stats.totalKills >= 10);
+    check("kill50", stats.totalKills >= 50);
+    check("kill100", stats.totalKills >= 100);
+    check("kill500", stats.totalKills >= 500);
+    check("kill1000", stats.totalKills >= 1000);
+
+    // 보스/엘리트
+    check("killElite", (stats.eliteKills || 0) >= 1);
+    check("kill5Elite", (stats.eliteKills || 0) >= 5);
+    check("killBoss", stats.bossKills >= 1);
+    check("kill10Boss", stats.bossKills >= 10);
+
+    // 생존
+    check("survive1min", this.elapsed >= 60);
+    check("survive3min", this.elapsed >= 180);
+    check("survive5min", this.elapsed >= 300);
+    check("survive10min", won && this.elapsed >= 600);
+
+    // 레벨
+    check("lv10", this.level >= 10);
+    check("lv30", this.level >= 30);
+    check("lv50", this.level >= 50);
+
+    // 무기
+    check("maxWeapon", this.weapons.some(w => w.lv >= 8));
+    check("evolveWeapon", stats.evolvedWeapons && stats.evolvedWeapons.length >= 1);
+    check("evolve3Weapon", stats.evolvedWeapons && stats.evolvedWeapons.length >= 3);
+
+    // 캐릭터
+    const charCount = Object.keys(CHARACTERS).length;
+    const unlockedChars = (stats.unlockedCharacters || []).length;
+    check("unlockChar", unlockedChars >= 1);
+    check("unlockAllChar", unlockedChars >= charCount);
+
+    // 맵 클리어
+    check("clearBamboo", won && this.mapId === "bamboo");
+    check("clearGraveyard", won && this.mapId === "graveyard");
+    check("clearSea", won && this.mapId === "sea");
+    check("clearForest", won && this.mapId === "forest");
+    check("clearDokkabong", won && this.mapId === "dokkabong");
+
+    // 난이도
+    check("clearNormal", won && settings.difficulty === "normal");
+    check("clearHard", won && settings.difficulty === "hard");
+    check("clearNightmare", won && settings.difficulty === "nightmare");
+    check("clearNightmare10", won && settings.difficulty === "nightmare" && this.elapsed >= 600);
+
+    // 골드/메타
+    check("gold100", stats.totalGold >= 100);
+    check("gold1000", stats.totalGold >= 1000);
+    check("gold10000", stats.totalGold >= 10000);
+
+    // 엔드리스/NG+
+    check("endlessWin", won && settings.endless);
+    check("ngPlus1", won && settings.ngPlus >= 1);
+    check("ngPlus3", won && settings.ngPlus >= 3);
+
+    // 특수 조건
+    check("noDamage", won && this.damageTaken === 0);
+    check("hp1Survive", won && this.hp <= 1);
+    check("fullHpWin", won && this.hp >= this.maxHp * 0.9);
+
+    // 유물
+    check("useArtifact", this.artifactId !== null);
+    const usedArtifacts = stats.usedArtifacts || [];
+    if (this.artifactId && !usedArtifacts.includes(this.artifactId)) {
+      usedArtifacts.push(this.artifactId);
+      stats.usedArtifacts = usedArtifacts;
+    }
+    check("useAllArtifact", usedArtifacts.length >= Object.keys(ARTIFACTS).length);
+
+    // 시너지
+    check("synergy1", (stats.synergyCount || 0) >= 1);
+    check("synergy10", (stats.synergyCount || 0) >= 10);
+
+    // 시간대별
+    const hour = new Date().getHours();
+    check("midnightClear", won && (hour >= 0 && hour < 5));
+    check("morningClear", won && (hour >= 6 && hour < 9));
+
+    // Save achievements
+    saveAchievements(earned);
+
+    // Show new achievement notifications
+    if (newAchievements.length > 0) {
+      this._showAchievementNotifications(newAchievements);
+    }
+  }
+
+  _showAchievementNotifications(achievements) {
+    for (let i = 0; i < achievements.length; i++) {
+      const a = achievements[i];
+      setTimeout(() => {
+        this._showAnnouncement("🏆 업적 달성: " + a.name + " (+" + a.reward + "💰)", 4000);
+      }, i * 1500);
+    }
   }
 
   _showEndStats() {
@@ -2225,6 +3081,72 @@ class Game {
       unlockDiv.style.cssText = "margin-top:12px;padding:10px;background:rgba(255,215,0,.15);border:1px solid #ffd93d;border-radius:8px;color:#ffd93d;text-align:center;font-size:15px;";
       box.appendChild(unlockDiv);
     }
+
+    /* artifact info */
+    if (this.artifact) {
+      const artDiv = document.createElement("div");
+      artDiv.style.cssText = "margin-top:8px;padding:8px;background:rgba(156,39,176,.12);border:1px solid #ab47bc;border-radius:8px;color:#ce93d8;text-align:center;font-size:14px;";
+      artDiv.textContent = "유물: " + this.artifact.icon + " " + this.artifact.name;
+      box.appendChild(artDiv);
+    }
+
+    /* synergy info */
+    if (this.activeSynergy) {
+      const synDiv = document.createElement("div");
+      synDiv.style.cssText = "margin-top:6px;padding:8px;background:rgba(255,152,0,.12);border:1px solid #ff9800;border-radius:8px;color:#ffb74d;text-align:center;font-size:14px;";
+      synDiv.textContent = "시너지: " + this.activeSynergy.name + " — " + this.activeSynergy.desc;
+      box.appendChild(synDiv);
+    }
+
+    /* NG+ info */
+    if (this.ngPlus > 0) {
+      const ngDiv = document.createElement("div");
+      ngDiv.style.cssText = "margin-top:6px;padding:6px;background:rgba(244,67,54,.12);border:1px solid #ef5350;border-radius:8px;color:#ef9a9a;text-align:center;font-size:13px;";
+      ngDiv.textContent = "🔥 NG+" + this.ngPlus;
+      box.appendChild(ngDiv);
+    }
+  }
+
+  /* ── SHARE ── */
+  _shareResult() {
+    const m = Math.floor(this.elapsed / 60);
+    const s = Math.floor(this.elapsed % 60);
+    const ch = CHARACTERS[this.selectedChar];
+    const diff = DIFFICULTIES[this.settings.difficulty];
+    const won = this.ui.endTitle.textContent.includes("퇴마");
+
+    // Create a share text
+    const shareText = won
+      ? `🎮 요괴야행 클리어!\n\n👤 ${ch ? ch.icon + " " + ch.name : ""}\n⏱️ ${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}\n💀 ${this.killCount} 처치\n📊 Lv ${this.level} | ${diff ? diff.emoji + " " + diff.name : ""}\n\n#요괴야행 #게임`
+      : `🎮 요괴야행 - 게임 오버\n\n👤 ${ch ? ch.icon + " " + ch.name : ""}\n⏱️ ${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}\n💀 ${this.killCount} 처치\n📊 Lv ${this.level}\n\n#요괴야행 #게임`;
+
+    // Try to copy to clipboard
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(shareText).then(() => {
+        this._showAnnouncement("📋 결과가 클립보드에 복사되었습니다!", 3000);
+      }).catch(() => {
+        // Fallback: try using a textarea
+        this._copyToClipboardFallback(shareText);
+      });
+    } else {
+      this._copyToClipboardFallback(shareText);
+    }
+  }
+
+  _copyToClipboardFallback(text) {
+    const textarea = document.createElement("textarea");
+    textarea.value = text;
+    textarea.style.position = "fixed";
+    textarea.style.opacity = "0";
+    document.body.appendChild(textarea);
+    textarea.select();
+    try {
+      document.execCommand("copy");
+      this._showAnnouncement("📋 결과가 클립보드에 복사되었습니다!", 3000);
+    } catch (e) {
+      this._showAnnouncement("❌ 클립보드 복사 실패", 3000);
+    }
+    document.body.removeChild(textarea);
   }
 
   /* ── FX ── */
