@@ -29,6 +29,10 @@
     <div id="hud-info">
       <span id="timer">00:00</span>
       <span id="kills">0 KILLS</span>
+      <span id="combo-display" class="hidden">
+        <span id="combo-count">0</span>
+        <span id="combo-tier"></span>
+      </span>
       <span id="hud-gold">💰 0</span>
       <span id="diff-badge"></span>
     </div>
@@ -63,6 +67,18 @@
       <p class="screen-subtitle">클릭하여 게임을 시작하세요</p>
       <div id="char-list" class="char-list"></div>
       <button id="btn-back-chars" class="btn btn-secondary">← 돌아가기</button>
+    </div>
+  </div>
+
+  <!-- Pet Select -->
+  <div id="screen-pet" class="ov hidden">
+    <div class="ov-box wide-box">
+      <h2 class="screen-title">펫 선택 (선택)</h2>
+      <p class="screen-subtitle">함께할 펫을 고르거나 건너뛰기</p>
+      <div id="pet-list" class="pet-list"></div>
+      <div class="pet-btns">
+        <button id="btn-skip-pet" class="btn btn-secondary">건너뛰기</button>
+      </div>
     </div>
   </div>
 
@@ -151,9 +167,16 @@
           </select>
         </div>
         <div class="setting-row">
-          <label for="endless-toggle">엔드리스 모드</label>
-          <input type="checkbox" id="endless-toggle">
-          <span class="vol-val" id="endless-label">OFF</span>
+          <label for="game-mode-select">게임 모드</label>
+          <select id="game-mode-select">
+            <option value="normal">일반 (10분)</option>
+            <option value="endless">엔드리스</option>
+            <option value="timeAttack">타임 어택</option>
+          </select>
+        </div>
+        <div id="timeattack-info" class="setting-row hidden">
+          <span>🏆 타임 어택 기록: </span>
+          <span id="timeattack-best">--:--</span>
         </div>
       </div>
       <button id="btn-back-settings" class="btn btn-secondary">← 저장 후 돌아가기</button>

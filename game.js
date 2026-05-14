@@ -757,9 +757,28 @@ function getDailyChallenge() {
 }
 
 function loadDailyStats() {
-  return _load("yokai_daily", { lastDate: "", bestTime: 0, completed: false });
+  return _load("yokia_daily", { lastDate: "", bestTime: 0, completed: false });
 }
-function saveDailyStats(v) { _save("yokai_daily", v); }
+function saveDailyStats(v) { _save("yokia_daily", v); }
+
+/* ── Time Attack Best Times ── */
+function loadBestTime(mode) {
+  const key = `yokai_best_${mode}`;
+  return parseFloat(localStorage.getItem(key) || 'Infinity');
+}
+function saveBestTime(mode, time) {
+  const key = `yokai_best_${mode}`;
+  const current = loadBestTime(mode);
+  if (time < current) {
+    localStorage.setItem(key, time.toString());
+    return true; // New record
+  }
+  return false;
+}
+function formatTime(seconds) {
+  const m = Math.floor(seconds / 60), s = Math.floor(seconds % 60);
+  return String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+}
 
 /* ─── ACHIEVEMENTS ─── */
 const ACHIEVEMENTS = {
@@ -826,6 +845,21 @@ const ACHIEVEMENTS = {
   // 시간대별
   midnightClear:  { name: "자정 사냥",    desc: "자정 시간대에 클리어", icon: "🌙", reward: 300 },
   morningClear:   { name: "새벽 사냥",    desc: "아침 시간대에 클리어", icon: "🌅", reward: 300 },
+  // 콤보 관련
+  combo5:         { name: "연속 사냥",    desc: "콤보 5 달성", icon: "🔥", reward: 100 },
+  combo10:        { name: "무쌍 사냥꾼",  desc: "콤보 10 달성", icon: "⚔️", reward: 200 },
+  combo20:        { name: "초월 사냥꾼",   desc: "콤보 20 달성", icon: "💫", reward: 400 },
+  combo50:        { name: "전설 사냥꾼",  desc: "콤보 50 달성", icon: "👑", reward: 1000 },
+  // 파워업 관련
+  powerup10:      { name: "파워업 수집가", desc: "파워업 10개 획득", icon: "⚡", reward: 150 },
+  powerup50:      { name: "파워업 달인",   desc: "파워업 50개 획득", icon: "✨", reward: 400 },
+  // 펫 관련
+  petFox:         { name: "여우 친구",    desc: "여우 요정으로 30 처치", icon: "🦊", reward: 200 },
+  petGhost:       { name: "귀신 보호자",  desc: "귀신 친구로 5분 생존", icon: "👻", reward: 200 },
+  petBird:        { name: "영혼 수집가",  desc: "영혼 새로 XP 500 획득", icon: "🐦", reward: 200 },
+  petDragon:      { name: "용 사육사",   desc: "용 도마뱀로 골드 200 추가 획득", icon: "🐉", reward: 200 },
+  // 무기 진화
+  evolve5Weapon:  { name: "진화 달인",    desc: "무기 5회 진화", icon: "🌈", reward: 800 },
 };
 
 /* ─── ARTIFACTS (picked at run start, 1 per run) ─── */
@@ -840,6 +874,24 @@ const ARTIFACTS = {
   windCharm:    { name: "풍부",     icon: "🎐", desc: "이동속도 20% 증가",            effect: "spdUp20" },
   ironTortle:   { name: "철거북",   icon: "🐢", desc: "최대 HP +50",                  effect: "hpUp50" },
   foxBead:      { name: "여우구슬", icon: "🔮", desc: "보스 피해 30% 증가",           effect: "bossDmg30" },
+};
+
+/* ─── POWERUPS (in-game pickups, temporary buffs) ─── */
+const POWERUPS = {
+  speedBoost: { name: "가속", icon: "⚡", effect: "speed", val: 0.5, dur: 10, col: "#ffeb3b" },
+  damageBoost: { name: "강타", icon: "💥", effect: "dmg", val: 0.3, dur: 15, col: "#ff5722" },
+  invincibility: { name: "무적", icon: "✨", effect: "inv", dur: 3, col: "#e040fb" },
+  magnet: { name: "자석", icon: "🧲", effect: "magnet", val: 3, dur: 20, col: "#4caf50" },
+  doubleXP: { name: "好运", icon: "⭐", effect: "xp", val: 1, dur: 20, col: "#ffd700" },
+  heal: { name: "회복", icon: "💚", effect: "heal", val: 20, dur: 0, col: "#e91e63" },
+};
+
+/* ─── PETS (companions) ─── */
+const PETS = {
+  foxPet: { name: "여우 요정", icon: "🦊", desc: "자동 공격 - 근처 적 데미지", dmg: 20, atkInterval: 3, range: 150 },
+  ghostPet: { name: "귀신 친구", icon: "👻", desc: "방어 지원 - 받는 피해 10% 감소", dmgReduce: 0.1 },
+  spiritBird: { name: "영혼 새", icon: "🐦", desc: "경험치 증가 - XP +25%", xpMul: 1.25 },
+  dragonSalamander: { name: "용 도마뱀", icon: "🐉", desc: "골드 증가 - 골드 +30%", goldMul: 1.3 },
 };
 
 /* ─── SYNERGY (character + weapon bonus) ─── */
@@ -924,7 +976,7 @@ class Game {
     this.ui = {
       hud: $("hud"), menu: $("screen-menu"), lvl: $("screen-lvl"),
       pause: $("screen-pause"), end: $("screen-end"),
-      charSelect: $("screen-chars"), shop: $("screen-shop"), settings: $("screen-settings"),
+      charSelect: $("screen-chars"), petScreen: $("screen-pet"), shop: $("screen-shop"), settings: $("screen-settings"),
       achievements: $("screen-achievements"), daily: $("screen-daily"),
       leaderboard: $("screen-leaderboard"),
       dailyChallenge: $("daily-challenge"), dailyBest: $("daily-best"),
@@ -933,10 +985,11 @@ class Game {
       timer: $("timer"), kills: $("kills"), wslots: $("weapon-slots"),
       choices: $("choices"), endTitle: $("end-title"), endStats: $("end-stats"),
       joyZone: $("joy-zone"), menuGold: $("menu-gold"), hudGold: $("hud-gold"),
-      diffBadge: $("diff-badge"), charList: $("char-list"),
+      diffBadge: $("diff-badge"), charList: $("char-list"), petList: $("pet-list"),
       shopList: $("shop-list"), shopGold: $("shop-gold"),
       achievementList: $("achievement-list"), achievementProgress: $("achievement-progress"),
       goldEarned: $("gold-earned"), announceBar: $("announce-bar"),
+      comboDisplay: $("combo-display"),
     };
 
     /* menu buttons */
@@ -946,6 +999,9 @@ class Game {
     $("btn-daily").onclick = () => this._showDaily();
     $("btn-leaderboard").onclick = () => this._showLeaderboard();
     $("btn-settings").onclick = () => this._showSettings();
+
+    /* pet select buttons */
+    $("btn-skip-pet").onclick = () => this._showArtifactSelect();
 
     /* leaderboard tabs */
     $("tab-easy").onclick = () => this._loadLeaderboard("easy");
@@ -1078,6 +1134,41 @@ class Game {
     this._renderCharList();
   }
 
+  _showPetSelect() {
+    this._hideAll();
+    this.state = "petSelect";
+    this.ui.petScreen.classList.remove("hidden");
+    this.chosenPet = null;
+    this._renderPetList();
+  }
+
+  _renderPetList() {
+    const box = this.ui.petList;
+    while (box.firstChild) box.removeChild(box.firstChild);
+
+    for (const [id, pet] of Object.entries(PETS)) {
+      const card = document.createElement("div");
+      card.className = "pet-card";
+      if (id === this.chosenPet) card.classList.add("selected");
+
+      const icon = document.createElement("div");
+      icon.className = "pet-icon"; icon.textContent = pet.icon;
+
+      const name = document.createElement("div");
+      name.className = "pet-name"; name.textContent = pet.name;
+
+      const desc = document.createElement("div");
+      desc.className = "pet-desc"; desc.textContent = pet.desc;
+
+      card.append(icon, name, desc);
+      card.onclick = () => {
+        this.chosenPet = id;
+        this._renderPetList();
+      };
+      box.appendChild(card);
+    }
+  }
+
   _renderCharList() {
     const box = this.ui.charList;
     while (box.firstChild) box.removeChild(box.firstChild);
@@ -1113,7 +1204,7 @@ class Game {
       if (isUnlocked) {
         card.onclick = () => {
           this.selectedChar = id;
-          this._showArtifactSelect();
+          this._showPetSelect();
         };
       }
       box.appendChild(card);
@@ -1432,14 +1523,30 @@ class Game {
       };
     }
 
-    /* endless toggle */
-    const endlessEl = document.getElementById("endless-toggle");
-    if (endlessEl) {
-      endlessEl.checked = !!this.settings.endless;
-      document.getElementById("endless-label").textContent = this.settings.endless ? "ON" : "OFF";
-      endlessEl.onchange = () => {
-        document.getElementById("endless-label").textContent = endlessEl.checked ? "ON" : "OFF";
+    /* game mode toggle */
+    const gameModeSel = document.getElementById("game-mode-select");
+    if (gameModeSel) {
+      gameModeSel.value = this.settings.gameMode || 'normal';
+      gameModeSel.onchange = () => {
+        const infoRow = document.getElementById("timeattack-info");
+        if (infoRow) {
+          infoRow.classList.toggle("hidden", gameModeSel.value !== "timeAttack");
+        }
       };
+      // Show time attack info if selected
+      if (this.settings.gameMode === 'timeAttack') {
+        const infoRow = document.getElementById("timeattack-info");
+        if (infoRow) infoRow.classList.remove("hidden");
+      }
+      // Show best time
+      const bestEl = document.getElementById("timeattack-best");
+      if (bestEl) {
+        const best = loadBestTime('timeAttack');
+        if (best < Infinity) {
+          const m = Math.floor(best / 60), s = Math.floor(best % 60);
+          bestEl.textContent = String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+        }
+      }
     }
 
     /* live update listeners */
@@ -1459,8 +1566,8 @@ class Game {
     if (joyEl) this.settings.joySens = parseInt(joyEl.value);
     const mapEl = document.getElementById("map-select");
     if (mapEl && mapEl.selectedOptions.length && !mapEl.selectedOptions[0].disabled) this.settings.map = mapEl.value;
-    const endlessEl = document.getElementById("endless-toggle");
-    if (endlessEl) this.settings.endless = endlessEl.checked;
+    const gameModeEl = document.getElementById("game-mode-select");
+    if (gameModeEl) this.settings.gameMode = gameModeEl.value;
     saveSettings(this.settings);
     this.sfx.setSfxVol(this.settings.sfxVol / 100);
     this.sfx.setBgmVol(this.settings.bgmVol / 100);
@@ -1586,8 +1693,14 @@ class Game {
       if (eff.noRegen) regen = 0;
     }
 
-    /* endless mode */
-    this.endless = !!this.settings.endless;
+    /* game mode */
+    this.gameMode = this.settings.gameMode || 'normal';
+    this.endless = (this.gameMode === 'endless') || !!this.settings.endless;
+
+    /* time attack: faster spawn to complete quicker */
+    if (this.gameMode === 'timeAttack') {
+      this.spawnInterval = 800; // Faster spawns
+    }
 
     /* detect synergy */
     this.activeSynergy = null;
@@ -1632,7 +1745,26 @@ class Game {
     this.xp = 0; this.level = 1; this.xpNext = 10;
     this.elapsed = 0; this.killCount = 0; this.totalDmg = 0;
     this.goldEarned = 0; this.damageTaken = 0;
-    this.spawnTimer = 0; this.spawnInterval = 1500;
+    /* combo system */
+    this.combo = { count: 0, timer: 0, maxCombo: 0, lastKillTime: 0 };
+    this.comboMultiplier = { dmg: 1, gold: 1, xp: 1 };
+    /* power-up system */
+    this.baseSpd = spd; this.baseDmgMul = dmgMul;
+    this.activePowerups = {};
+    this.powerupDrops = [];
+    /* run stats for achievements */
+    this.runStats = { powerupsCollected: 0, xpGained: 0, goldEarnedFromPet: 0 };
+    /* pet system */
+    this.pets = [];
+    if (this.chosenPet) {
+      this._spawnPet(this.chosenPet);
+      // Apply pet passive effects
+      const petDef = PETS[this.chosenPet];
+      if (petDef.xpMul) this.p.xpMul = (this.p.xpMul || 1) * petDef.xpMul;
+      if (petDef.goldMul) this.goldMul *= petDef.goldMul;
+      if (petDef.dmgReduce) this._artDmgReduce *= (1 - petDef.dmgReduce);
+    }
+    this.spawnTimer = -1; this.spawnInterval = 1500;
     this.eliteTimer = 0;
     this.bossSpawned = false; this.allureT = 0; this.allureSrc = null;
     this.bladeAngle = 0; this.beadsAngle = 0; this.pendingLevelUps = 0;
@@ -1663,8 +1795,30 @@ class Game {
   _update(dt) {
     this.elapsed += dt;
 
+    /* combo timer countdown (3 second window) */
+    if (this.combo.count > 0) {
+      this.combo.timer -= dt;
+      if (this.combo.timer <= 0) {
+        this.combo.count = 0;
+        this.comboMultiplier = { dmg: 1, gold: 1, xp: 1 };
+        this._updateComboUI();
+      }
+    }
+
     /* dynamic BGM based on time */
     this._updateBgm();
+
+    /* apply power-up buffs */
+    let spdMul = 1, dmgMul = this.baseDmgMul || 1;
+    if (this.activePowerups.speed) spdMul += this.activePowerups.speed.val;
+    if (this.activePowerups.dmg) dmgMul *= (1 + this.activePowerups.dmg.val);
+    this.p.spd = this.baseSpd * spdMul;
+    this.p.dmgMul = dmgMul;
+
+    /* invincibility check */
+    if (this.activePowerups.inv) {
+      this.p.invT = 0.1;
+    }
 
     /* player movement */
     let mx = 0, my = 0;
@@ -1744,6 +1898,10 @@ class Game {
     this._updateChests(dt);
     /* talismans */
     this._updateTalismans(dt);
+    /* power-ups */
+    this._updatePowerups(dt);
+    /* pets */
+    this._updatePets(dt);
     /* fx */
     this.particles = this.particles.filter(p => {
       p.x += p.vx * dt * 60; p.y += p.vy * dt * 60;
@@ -1777,7 +1935,14 @@ class Game {
     /* HUD */
     this._updateHUD();
     /* lvl up */
-    if (this.pendingLevelUps > 0 && this.state === "play") { this.pendingLevelUps--; this._showLevelUp(); }
+    if (this.pendingLevelUps > 0 && this.state === "play") {
+      this.pendingLevelUps--;
+      // Level-up visual effects
+      this._spawnParticles(this.p.x, this.p.y, 20, "#ffd700");
+      this._shake(3, 0.1);
+      this.lightnings.push({ x: this.p.x, y: this.p.y, r: 0, maxR: 60, life: 0.4, maxLife: 0.4, col: "#ffd700" });
+      this._showLevelUp();
+    }
     /* victory (skip in endless mode) */
     if (this.elapsed >= SURVIVE && !this.endless) this._victory();
     /* endless mode: spawn extra boss every 5 min after 10 min */
@@ -2486,7 +2651,7 @@ class Game {
 
   /* ── DAMAGE ── */
   _damageEnemy(e, baseDmg) {
-    let dmg = Math.round(baseDmg * (this.p.dmgMul || 1));
+    let dmg = Math.round(baseDmg * (this.p.dmgMul || 1) * this.comboMultiplier.dmg);
     /* boss damage artifact */
     if (this.artifact && this.artifact.effect === "bossDmg30" && (e.boss || e.elite)) dmg = Math.round(dmg * 1.3);
     let crit = false;
@@ -2508,8 +2673,44 @@ class Game {
 
   _onEnemyKill(e) {
     this.killCount++;
-    if (e.elite || e.boss) this.eliteKillCount = (this.eliteKillCount || 0) + 1;
-    this.sfx.kill(); this._spawnParticles(e.x, e.y, 12, e.col);
+
+    /* ── COMBO SYSTEM ── */
+    this.combo.count++;
+    this.combo.timer = 3; // 3 second window
+    this.combo.lastKillTime = this.elapsed;
+    if (this.combo.count > this.combo.maxCombo) this.combo.maxCombo = this.combo.count;
+
+    // Update combo multiplier based on tier
+    const c = this.combo.count;
+    if (c >= 50) {
+      this.comboMultiplier = { dmg: 1.75, gold: 2.0, xp: 1.5 };
+    } else if (c >= 20) {
+      this.comboMultiplier = { dmg: 1.5, gold: 1.5, xp: 1.25 };
+    } else if (c >= 10) {
+      this.comboMultiplier = { dmg: 1.25, gold: 1.25, xp: 1.1 };
+    } else if (c >= 5) {
+      this.comboMultiplier = { dmg: 1.1, gold: 1, xp: 1 };
+    }
+    this._spawnComboText(c);
+    this._updateComboUI();
+
+    if (e.elite || e.boss) {
+      this.eliteKillCount = (this.eliteKillCount || 0) + 1;
+      // Enhanced kill effects for elite/boss
+      this.sfx.kill();
+      this._spawnParticles(e.x, e.y, e.boss ? 35 : 20, e.boss ? "#ffd700" : "#ff9800");
+      // Screen shake
+      this._shake(e.boss ? 10 : 5, e.boss ? 0.3 : 0.15);
+      // Ring effect for boss kills
+      if (e.boss) {
+        this.lightnings.push({ x: e.x, y: e.y, r: 0, maxR: 100, life: 0.4, maxLife: 0.4, col: "#ffd700" });
+      }
+    } else {
+      this.sfx.kill();
+      this._spawnParticles(e.x, e.y, 12, e.col);
+      // Combo shake for high combos
+      if (this.combo.count >= 20) this._shake(3, 0.1);
+    }
     /* artifact: kill heal */
     if (this.artifact && this.artifact.effect === "killHeal5" && Math.random() < 0.05) {
       this.p.hp = min(this.p.hp + 5, this.p.maxHp);
@@ -2530,7 +2731,7 @@ class Game {
     }
 
     /* drop XP gems */
-    let xv = e.xp;
+    let xv = Math.round(e.xp * this.comboMultiplier.xp);
     while (xv > 0) {
       const v = xv >= 10 ? 10 : xv >= 5 ? 5 : 1; xv -= v;
       this.gems.push({
@@ -2544,7 +2745,7 @@ class Game {
     /* drop gold coins */
     const def = ETYPES[e.type];
     if (def) {
-      const goldAmt = rInt(def.goldMin || 0, def.goldMax || 0);
+      const goldAmt = Math.round(rInt(def.goldMin || 0, def.goldMax || 0) * this.comboMultiplier.gold);
       if (goldAmt > 0) {
         this.goldCoins.push({
           x: e.x + rand(-12, 12), y: e.y + rand(-12, 12),
@@ -2565,6 +2766,12 @@ class Game {
     if (e.boss) {
       this.cStats.bossKills = (this.cStats.bossKills || 0) + 1;
     }
+
+    /* power-up drop */
+    const dropChance = e.elite || e.boss ? 0.3 : 0.05;
+    if (Math.random() < dropChance) {
+      this._spawnPowerup(e.x, e.y, e.elite || e.boss);
+    }
   }
 
   /* ── GOLD COINS ── */
@@ -2581,6 +2788,10 @@ class Game {
       if (d < this.p.r + c.r) {
         const earned = Math.round(c.val * this.goldMul);
         this.goldEarned += earned;
+        // Track pet bonus gold for achievements
+        if (this.chosenPet === 'dragonSalamander') {
+          this.runStats.goldEarnedFromPet = (this.runStats.goldEarnedFromPet || 0) + earned;
+        }
         this.sfx.coin();
         this.dmgNums.push({ x: this.p.x, y: this.p.y - 30, txt: "+" + earned + "💰", col: "#ffd93d", life: 0.6, maxLife: 0.6, a: 1, big: false });
         return false;
@@ -2641,7 +2852,10 @@ class Game {
         g.x += cos(a) * spd * dt * 60; g.y += sin(a) * spd * dt * 60;
       }
       if (d < this.p.r + g.r) {
-        this.xp += Math.round(g.val * this.p.xpMul); this.sfx.xp();
+        const gainedXp = Math.round(g.val * this.p.xpMul);
+        this.xp += gainedXp;
+        this.runStats.xpGained = (this.runStats.xpGained || 0) + gainedXp;
+        this.sfx.xp();
         while (this.xp >= this.xpNext) {
           this.xp -= this.xpNext; this.level++;
           this.xpNext = Math.round(10 * Math.pow(1.18, this.level - 1));
@@ -2677,6 +2891,133 @@ class Game {
       }
       return true;
     });
+  }
+
+  /* ── POWER-UPS ── */
+  _updatePowerups(dt) {
+    // Update active power-up timers
+    for (const key of Object.keys(this.activePowerups)) {
+      const buf = this.activePowerups[key];
+      buf.timer -= dt;
+      if (buf.timer <= 0) {
+        delete this.activePowerups[key];
+      }
+    }
+
+    // Update power-up drops (movement and collection)
+    this.powerupDrops = this.powerupDrops.filter(p => {
+      p.life -= dt;
+      if (p.life <= 0) return false;
+
+      // Magnet effect - move towards player
+      const magnetRange = this.p.magnetR * (this.activePowerups.magnet ? this.activePowerups.magnet.val : 1);
+      const d = dist(p, this.p);
+      if (d < magnetRange) {
+        const a = atan2(this.p.y - p.y, this.p.x - p.x);
+        p.x += cos(a) * 8 * dt * 60;
+        p.y += sin(a) * 8 * dt * 60;
+      }
+
+      // Collection check
+      if (d < this.p.r + p.r) {
+        this._applyPowerup(p.type);
+        return false;
+      }
+      return true;
+    });
+  }
+
+  _applyPowerup(type) {
+    const def = POWERUPS[type];
+    if (!def) return;
+
+    this.sfx.talisman();
+    this._spawnParticles(this.p.x, this.p.y, 8, def.col);
+
+    if (def.effect === 'heal') {
+      this.p.hp = min(this.p.hp + def.val, this.p.maxHp);
+      this.dmgNums.push({ x: this.p.x, y: this.p.y - 25, txt: "+" + def.val, col: "#66bb6a", life: 0.8, maxLife: 0.8, a: 1, big: true });
+      return;
+    }
+
+    // Track powerup for achievements
+    this.runStats.powerupsCollected = (this.runStats.powerupsCollected || 0) + 1;
+
+    // Apply or refresh buff
+    this.activePowerups[def.effect] = { timer: def.dur, val: def.val, col: def.col, icon: def.icon, name: def.name };
+
+    // Show notification
+    this.dmgNums.push({ x: this.p.x, y: this.p.y - 35, txt: def.icon + " " + def.name, col: def.col, life: 1.2, maxLife: 1.2, a: 1, big: true });
+  }
+
+  _spawnPowerup(x, y, isRare) {
+    const keys = Object.keys(POWERUPS);
+    // Exclude heal from normal drops
+    const pool = isRare ? keys : keys.filter(k => k !== 'heal');
+    const type = pool[Math.floor(Math.random() * pool.length)];
+    this.powerupDrops.push({
+      x: x + rand(-20, 20), y: y + rand(-20, 20),
+      type, r: 12, life: 30,
+    });
+  }
+
+  /* ── PETS ── */
+  _spawnPet(type) {
+    const def = PETS[type];
+    this.pets.push({
+      type,
+      x: this.p.x,
+      y: this.p.y,
+      r: 10,
+      atkTimer: 0,
+      angle: rand(0, TAU),
+      dmg: def.dmg || 0,
+      atkInterval: def.atkInterval || 3,
+      range: def.range || 150,
+    });
+  }
+
+  _updatePets(dt) {
+    for (const pet of this.pets) {
+      // Orbit around player
+      pet.angle += dt * 1.2;
+      const orbitR = 35;
+      const targetX = this.p.x + cos(pet.angle) * orbitR;
+      const targetY = this.p.y + sin(pet.angle) * orbitR;
+      pet.x += (targetX - pet.x) * 4 * dt;
+      pet.y += (targetY - pet.y) * 4 * dt;
+
+      // Fox pet auto-attack
+      if (pet.type === 'foxPet') {
+        pet.atkTimer -= dt;
+        if (pet.atkTimer <= 0) {
+          pet.atkTimer = pet.atkInterval;
+          this._petFoxAttack(pet);
+        }
+      }
+    }
+  }
+
+  _petFoxAttack(pet) {
+    // Find closest enemy
+    let closest = null, closestDist = pet.range;
+    for (const e of this.enemies) {
+      const d = dist(e, pet);
+      if (d < closestDist) {
+        closestDist = d;
+        closest = e;
+      }
+    }
+    if (closest) {
+      this._damageEnemy(closest, pet.dmg);
+      this._spawnParticles(closest.x, closest.y, 6, "#ff9800");
+      // Visual projectile
+      this.particles.push({
+        x: pet.x, y: pet.y,
+        vx: (closest.x - pet.x) / 5, vy: (closest.y - pet.y) / 5,
+        life: 0.5, maxLife: 0.5, col: "#ff9800", r: 4, a: 1
+      });
+    }
   }
 
   /* ── LEVEL UP ── */
@@ -2854,6 +3195,14 @@ class Game {
       }
     }
 
+    /* track time attack best time */
+    if (won && this.gameMode === 'timeAttack') {
+      const isNewRecord = saveBestTime('timeAttack', this.elapsed);
+      if (isNewRecord) {
+        this._showAnnouncement("🏆 타임 어택 새 기록: " + formatTime(this.elapsed), 5000);
+      }
+    }
+
     /* submit online leaderboard */
     if (won && isOnlineLeaderboardConfigured()) {
       const name = "Player" + Math.floor(Math.random() * 1000);
@@ -2999,6 +3348,34 @@ class Game {
     const hour = new Date().getHours();
     check("midnightClear", won && (hour >= 0 && hour < 5));
     check("morningClear", won && (hour >= 6 && hour < 9));
+
+    // 콤보 관련
+    check("combo5", this.combo.maxCombo >= 5);
+    check("combo10", this.combo.maxCombo >= 10);
+    check("combo20", this.combo.maxCombo >= 20);
+    check("combo50", this.combo.maxCombo >= 50);
+
+    // 파워업 관련 (runStats에서 powerupCollected 추적 필요)
+    const powerupCount = this.runStats?.powerupsCollected || 0;
+    check("powerup10", powerupCount >= 10);
+    check("powerup50", powerupCount >= 50);
+
+    // 펫 관련
+    if (this.chosenPet === 'foxPet') {
+      check("petFox", stats.kills >= 30);
+    }
+    if (this.chosenPet === 'ghostPet' && this.elapsed >= 300) {
+      check("petGhost", true);
+    }
+    if (this.chosenPet === 'birdPet' && (stats.xpGained || 0) >= 500) {
+      check("petBird", true);
+    }
+    if (this.chosenPet === 'dragonSalamander' && (stats.goldEarnedFromPet || 0) >= 200) {
+      check("petDragon", true);
+    }
+
+    // 무기 진화
+    check("evolve5Weapon", stats.evolvedWeapons && stats.evolvedWeapons.length >= 5);
 
     // Save achievements
     saveAchievements(earned);
@@ -3161,9 +3538,57 @@ class Game {
     }
   }
 
+  /* ── COMBO HELPER FUNCTIONS ── */
+  _getComboTier(count) {
+    if (count >= 50) return { name: "전설!", color: "#ffd700" };
+    if (count >= 20) return { name: "초월!", color: "#e040fb" };
+    if (count >= 10) return { name: "무쌍!", color: "#ff5722" };
+    if (count >= 5) return { name: "연속!", color: "#4caf50" };
+    return { name: "", color: "#fff" };
+  }
+
+  _spawnComboText(count) {
+    const tier = this._getComboTier(count);
+    if (!tier.name) return;
+    this.particles.push({
+      x: this.p.x + rand(-30, 30),
+      y: this.p.y - 50,
+      vx: 0, vy: -1,
+      life: 1.5, maxLife: 1.5,
+      col: tier.color,
+      txt: `${tier.name} ${count}Kill!`,
+      big: true,
+    });
+  }
+
+  _updateComboUI() {
+    const el = this.ui.comboDisplay;
+    if (!el) return;
+    const c = this.combo.count;
+    if (c > 0) {
+      el.classList.remove("hidden");
+      el.querySelector("#combo-count").textContent = c;
+      const tier = this._getComboTier(c);
+      const tierEl = el.querySelector("#combo-tier");
+      tierEl.textContent = tier.name;
+      el.className = "tier-" + (c >= 50 ? 50 : c >= 20 ? 20 : c >= 10 ? 10 : c >= 5 ? 5 : 0);
+    } else {
+      el.classList.add("hidden");
+    }
+  }
+
   _updateHUD() {
     const p = this.p;
-    this.ui.hpBar.style.width = (p.hp / p.maxHp * 100) + "%";
+    const hpPercent = p.hp / p.maxHp;
+    this.ui.hpBar.style.width = (hpPercent * 100) + "%";
+    // HP bar color based on health percentage
+    if (hpPercent < 0.3) {
+      this.ui.hpBar.style.background = "linear-gradient(90deg, #f44336, #ef5350)";
+    } else if (hpPercent < 0.6) {
+      this.ui.hpBar.style.background = "linear-gradient(90deg, #ff9800, #ffb74d)";
+    } else {
+      this.ui.hpBar.style.background = "linear-gradient(90deg, #4caf50, #81c784)";
+    }
     this.ui.hpTxt.textContent = Math.ceil(p.hp) + " / " + p.maxHp;
     this.ui.xpBar.style.width = (this.xp / this.xpNext * 100) + "%";
     this.ui.lvTxt.textContent = "Lv " + this.level;
@@ -3174,6 +3599,10 @@ class Game {
     if (this.ui.diffBadge) {
       const d = DIFFICULTIES[this.settings.difficulty];
       if (d) this.ui.diffBadge.textContent = d.emoji + " " + d.name;
+    }
+    // Update combo display if active
+    if (this.ui.comboDisplay && this.combo.count > 0) {
+      this._updateComboUI();
     }
   }
 
@@ -3350,6 +3779,21 @@ class Game {
       c.restore();
     }
 
+    /* ── power-ups ── */
+    for (const pu of this.powerupDrops) {
+      const sx = toX(pu.x), sy = toY(pu.y);
+      if (sx < -20 || sx > sw + 20 || sy < -20 || sy > sh + 20) continue;
+      const def = POWERUPS[pu.type];
+      if (!def) continue;
+      c.save();
+      c.globalAlpha = 0.7 + Math.sin(this.elapsed * 6) * 0.2;
+      c.fillStyle = def.col; c.shadowColor = def.col; c.shadowBlur = 14;
+      c.beginPath(); c.arc(sx, sy, pu.r, 0, TAU); c.fill();
+      c.fillStyle = "#fff"; c.font = "14px sans-serif"; c.textAlign = "center";
+      c.fillText(def.icon, sx, sy + 5);
+      c.restore();
+    }
+
     /* ── gems ── */
     for (const g of this.gems) {
       const sx = toX(g.x), sy = toY(g.y);
@@ -3357,6 +3801,17 @@ class Game {
       c.save(); c.translate(sx, sy); c.rotate(PI / 4);
       c.fillStyle = g.col; c.shadowColor = g.col; c.shadowBlur = 8;
       c.fillRect(-g.r, -g.r, g.r * 2, g.r * 2); c.restore();
+    }
+
+    /* ── pets ── */
+    for (const pet of this.pets) {
+      const sx = toX(pet.x), sy = toY(pet.y);
+      const icons = { foxPet: "🦊", ghostPet: "👻", spiritBird: "🐦", dragonSalamander: "🐉" };
+      c.save();
+      c.shadowColor = "#fff"; c.shadowBlur = 10;
+      c.font = "18px sans-serif"; c.textAlign = "center";
+      c.fillText(icons[pet.type] || "?", sx, sy + 6);
+      c.restore();
     }
 
     /* ── enemies (skip off-screen for perf) ── */
@@ -3588,12 +4043,25 @@ class Game {
 
     /* ── lightning bolts ── */
     for (const l of this.lightnings) {
-      c.save(); c.globalAlpha = min(1, l.t / 0.1);
-      const lc = l.col || "#ffeb3b"; c.strokeStyle = lc; c.shadowColor = lc; c.shadowBlur = 15; c.lineWidth = 3;
-      const sx = toX(l.x1), sy = toY(l.y1), ex = toX(l.x2), ey = toY(l.y2);
-      c.beginPath(); c.moveTo(sx, sy);
-      for (let i = 1; i < 6; i++) { const t = i / 6; c.lineTo(sx + (ex - sx) * t + rand(-15, 15), sy + (ey - sy) * t + rand(-15, 15)); }
-      c.lineTo(ex, ey); c.stroke(); c.restore();
+      c.save();
+      // Ring effect (when r property exists)
+      if (l.r !== undefined && l.maxR !== undefined) {
+        const progress = 1 - (l.life / l.maxLife);
+        const rad = l.r + (l.maxR - l.r) * progress;
+        const sx = toX(l.x), sy = toY(l.y);
+        c.globalAlpha = l.life / l.maxLife;
+        c.strokeStyle = l.col; c.shadowColor = l.col; c.shadowBlur = 20; c.lineWidth = 4;
+        c.beginPath(); c.arc(sx, sy, rad, 0, TAU); c.stroke();
+      } else {
+        // Lightning bolt effect
+        c.globalAlpha = min(1, l.t / 0.1);
+        const lc = l.col || "#ffeb3b"; c.strokeStyle = lc; c.shadowColor = lc; c.shadowBlur = 15; c.lineWidth = 3;
+        const sx = toX(l.x1), sy = toY(l.y1), ex = toX(l.x2), ey = toY(l.y2);
+        c.beginPath(); c.moveTo(sx, sy);
+        for (let i = 1; i < 6; i++) { const t = i / 6; c.lineTo(sx + (ex - sx) * t + rand(-15, 15), sy + (ey - sy) * t + rand(-15, 15)); }
+        c.lineTo(ex, ey); c.stroke();
+      }
+      c.restore();
     }
 
     /* ── scythe slashes ── */
@@ -3612,19 +4080,53 @@ class Game {
 
     /* ── particles ── */
     for (const pt of this.particles) {
-      c.globalAlpha = pt.a; c.beginPath();
-      c.arc(toX(pt.x), toY(pt.y), pt.r * pt.a, 0, TAU);
-      c.fillStyle = pt.col; c.fill();
+      if (pt.txt) {
+        // combo text particle
+        c.globalAlpha = pt.a;
+        c.font = (pt.big ? "bold 20px" : "bold 14px") + " 'Segoe UI',sans-serif";
+        c.fillStyle = pt.col;
+        c.textAlign = "center";
+        c.fillText(pt.txt, toX(pt.x), toY(pt.y));
+      } else {
+        // regular particle
+        c.globalAlpha = pt.a; c.beginPath();
+        c.arc(toX(pt.x), toY(pt.y), pt.r * pt.a, 0, TAU);
+        c.fillStyle = pt.col; c.fill();
+      }
     }
     c.globalAlpha = 1;
 
     /* ── player ── */
     {
       const sx = toX(this.p.x), sy = toY(this.p.y); c.save();
-      c.shadowColor = "#ffd54f"; c.shadowBlur = 16;
+
+      // Glow effect when invincible or active power-ups
+      if (this.p.invT > 0 || this.activePowerups.inv) {
+        c.shadowColor = "#e040fb"; c.shadowBlur = 25;
+      } else {
+        c.shadowColor = "#ffd54f"; c.shadowBlur = 16;
+      }
+
       c.beginPath(); c.arc(sx, sy, this.p.r, 0, TAU);
       const flash = this.p.flashT > 0, blink = this.p.invT > 0 && floor(this.p.invT * 12) % 2 === 0;
       c.fillStyle = flash ? "#ff5252" : blink ? "rgba(255,213,79,.4)" : "#fafafa"; c.fill(); c.restore();
+
+      // Power-up active indicator rings
+      if (this.activePowerups.speed) {
+        c.save();
+        c.globalAlpha = 0.4 + sin(this.elapsed * 6) * 0.2;
+        c.strokeStyle = "#ffeb3b"; c.lineWidth = 2;
+        c.beginPath(); c.arc(sx, sy, this.p.r + 6, 0, TAU); c.stroke();
+        c.restore();
+      }
+      if (this.activePowerups.inv) {
+        c.save();
+        c.globalAlpha = 0.5 + sin(this.elapsed * 8) * 0.3;
+        c.strokeStyle = "#e040fb"; c.lineWidth = 3;
+        c.beginPath(); c.arc(sx, sy, this.p.r + 8, 0, TAU); c.stroke();
+        c.restore();
+      }
+
       /* headband - color varies by character */
       const hbColors = { exorcist: "#d32f2f", shaman: "#7b1fa2", taoist: "#1565c0", hunter: "#2e7d32", monk: "#ff6f00", foxSpirit: "#f06292", reaper: "#6a1b9a", mountainGod: "#5d4037", seaDiver: "#0277bd" };
       c.fillStyle = hbColors[this.selectedChar] || "#d32f2f";
