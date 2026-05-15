@@ -233,6 +233,66 @@ html, body {
 .leaderboard-score { font-size: 1rem; color: #ffd93d; font-weight: 700; }
 .leaderboard-loading { text-align: center; color: rgba(255,255,255,.5); padding: 20px; }
 
+/* ── STAGE SELECTION ── */
+.stage-total-stars {
+  font-size: 1.4rem; font-weight: 800; color: #ffd93d;
+  text-align: center; margin-bottom: 16px;
+  text-shadow: 0 0 10px rgba(255,217,61,.4);
+}
+.chapter-tabs {
+  display: flex; gap: 8px; justify-content: center; margin-bottom: 16px; flex-wrap: wrap;
+}
+.chapter-tab {
+  padding: 10px 20px; border: none; border-radius: 10px;
+  background: rgba(255,255,255,.08); color: rgba(255,255,255,.7);
+  font-size: .95rem; cursor: pointer; transition: all .2s;
+}
+.chapter-tab.active {
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: #fff;
+}
+.chapter-tab:hover:not(.active) { background: rgba(255,255,255,.15); }
+.chapter-tab:disabled { opacity: .4; cursor: not-allowed; }
+.stage-list {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px; margin-bottom: 20px; max-height: 55vh; overflow-y: auto;
+}
+.stage-card {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px; border-radius: 12px;
+  background: rgba(255,255,255,.05); border: 2px solid rgba(255,255,255,.1);
+  cursor: pointer; transition: all .2s; text-align: left;
+}
+.stage-card:hover:not(.locked) {
+  transform: translateY(-2px); border-color: #6366f1; background: rgba(99,102,241,.1);
+}
+.stage-card.locked { opacity: .5; cursor: not-allowed; }
+.stage-icon { font-size: 2.5rem; }
+.stage-info { flex: 1; }
+.stage-name { font-size: 1rem; font-weight: 700; color: #fff; margin-bottom: 4px; }
+.stage-desc { font-size: .75rem; color: rgba(255,255,255,.5); margin-bottom: 4px; }
+.stage-difficulty { font-size: .7rem; padding: 2px 6px; border-radius: 4px; }
+.stage-difficulty.easy { background: rgba(76,175,80,.3); color: #81c784; }
+.stage-difficulty.normal { background: rgba(255,193,7,.3); color: #ffd54f; }
+.stage-difficulty.hard { background: rgba(244,67,54,.3); color: #ef5350; }
+.stage-difficulty.nightmare { background: rgba(156,39,176,.3); color: #ba68c8; }
+.stage-stars { font-size: 1.1rem; margin-left: auto; }
+.stage-stars .filled { color: #ffd93d; }
+.stage-stars .empty { color: rgba(255,255,255,.2); }
+
+/* ── STAGE CLEAR ── */
+.stage-clear-title {
+  font-size: 2rem; font-weight: 800; color: #4caf50; margin-bottom: 20px;
+  text-shadow: 0 0 20px rgba(76,175,80,.5);
+}
+.stage-clear-stars {
+  font-size: 2.5rem; text-align: center; margin-bottom: 20px; letter-spacing: 8px;
+}
+.stage-clear-stats {
+  text-align: center; margin-bottom: 24px; color: rgba(255,255,255,.8);
+}
+.stage-clear-btns { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+
 /* ── SETTINGS ── */
 .settings-content { text-align: left; max-width: 320px; margin: 0 auto 24px; }
 .setting-row {

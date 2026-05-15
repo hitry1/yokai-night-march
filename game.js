@@ -140,6 +140,35 @@ function loadSettings() {
 }
 function saveSettings(v) { _save(KEYS.settings, v); }
 
+/* stage progress */
+function loadStageProgress() {
+  return _load("yokai_stage", {
+    unlockedChapters: [1],
+    unlockedStages: ["1-1"],
+    stars: {}, // { "1-1": 3 }
+    totalStars: 0,
+  });
+}
+function saveStageProgress(v) { _save("yokai_stage", v); }
+function getStageStars(stageId) {
+  const progress = loadStageProgress();
+  return progress.stars[stageId] || 0;
+}
+function isStageUnlocked(stageId) {
+  const progress = loadStageProgress();
+  return progress.unlockedStages.includes(stageId);
+}
+function canUnlockStage(stageId) {
+  const stage = STAGES[stageId];
+  if (!stage) return false;
+  const progress = loadStageProgress();
+  if (stage.chapter === 1) return true;
+  // Check previous chapter stars
+  const prevChapter = CHAPTERS[stage.chapter - 1];
+  if (!prevChapter) return false;
+  return progress.totalStars >= stage.unlockCost;
+}
+
 /* unlocks */
 function loadUnlocks() {
   return _load(KEYS.unlocks, { characters: ["exorcist", "shaman"] });
@@ -792,6 +821,109 @@ const MAPS = {
   },
 };
 
+/* ─── STAGE SYSTEM ─── */
+const STAGES = {
+  // 챕터 1: 어두운 밤의 숲
+  "1-1": {
+    chapter: 1, name: "대나무 숲", desc: "가장 첫 번째 숲, 도깨비들이 사냥감을 찾고 있다",
+    map: "bamboo", difficulty: "easy",
+    clearTime: 180, // 3분
+    stars: { 1: 180, 2: 150, 3: 120 },
+    enemies: ["dokkaebi", "wisp", "shadow"],
+    boss: null,
+    unlockCost: 0,
+  },
+  "1-2": {
+    chapter: 1, name: "으스스한 길", desc: "등골이 서늘해지는 길, 해골병사가 nocturnal을 찾아온다",
+    map: "graveyard", difficulty: "easy",
+    clearTime: 210, // 3분 30초
+    stars: { 1: 210, 2: 180, 3: 150 },
+    enemies: ["dokkaebi", "wisp", "skeleton", "goblin"],
+    boss: null,
+    unlockCost: 0,
+  },
+  "1-3": {
+    chapter: 1, name: "버려진 사당", desc: "오랜 버려진 사당, 그 안에는 위험한 것들이 있다",
+    map: "graveyard", difficulty: "normal",
+    clearTime: 240, // 4분
+    stars: { 1: 240, 2: 210, 3: 180 },
+    enemies: ["skeleton", "ghost", "goblin", "wetGhost"],
+    boss: "dokkaKing",
+    unlockCost: 1, // 이전 스테이지 클리어 필요
+    reqStars: 1, // 별 1개 이상
+  },
+
+  // 챕터 2: 저승의 문
+  "2-1": {
+    chapter: 2, name: "무덤길", desc: "저승으로 향하는 길, 영혼들이 떠돌고 있다",
+    map: "graveyard", difficulty: "normal",
+    clearTime: 240,
+    stars: { 1: 240, 2: 210, 3: 180 },
+    enemies: ["skeleton", "ghost", "wetGhost", "tombKeeper"],
+    boss: null,
+    unlockCost: 3, // 1-3 클리어 + 별 3개
+    reqStars: 3,
+  },
+  "2-2": {
+    chapter: 2, name: "잠든 묘지", desc: "영혼들이 깊이 잠든 곳, Grave Keeper가 감시한다",
+    map: "graveyard", difficulty: "hard",
+    clearTime: 300,
+    stars: { 1: 300, 2: 270, 3: 240 },
+    enemies: ["ghost", "tombKeeper", "fireEnt", "plagueRat"],
+    boss: null,
+    unlockCost: 6,
+    reqStars: 6,
+  },
+  "2-3": {
+    chapter: 2, name: "저승문", desc: "저승의 문前面, 강력한 수호자들이 있다",
+    map: "graveyard", difficulty: "hard",
+    clearTime: 360,
+    stars: { 1: 360, 2: 330, 3: 300 },
+    enemies: ["tombKeeper", "fireEnt", "demonKnight", "soulSiphon"],
+    boss: "haetae",
+    unlockCost: 9,
+    reqStars: 9,
+  },
+
+  // 챕터 3: 용궁
+  "3-1": {
+    chapter: 3, name: "해안가", desc: "바다와 숲의 경계, 물귀신이 나타난다",
+    map: "sea", difficulty: "hard",
+    clearTime: 300,
+    stars: { 1: 300, 2: 270, 3: 240 },
+    enemies: ["wetGhost", "plagueRat", "soulSiphon", "goblin"],
+    boss: null,
+    unlockCost: 12,
+    reqStars: 12,
+  },
+  "3-2": {
+    chapter: 3, name: "용궁 입구", desc: "용궁으로 들어서는 곳, inúmera한 적들이 있다",
+    map: "sea", difficulty: "nightmare",
+    clearTime: 360,
+    stars: { 1: 360, 2: 330, 3: 300 },
+    enemies: ["soulSiphon", "iceGolem", "demonKnight", "plagueRat"],
+    boss: null,
+    unlockCost: 15,
+    reqStars: 15,
+  },
+  "3-3": {
+    chapter: 3, name: "용왕의大殿", desc: "용왕이 지키는 곳,终极挑战",
+    map: "sea", difficulty: "nightmare",
+    clearTime: 420,
+    stars: { 1: 420, 2: 390, 3: 360 },
+    enemies: ["iceGolem", "demonKnight", "ghostKing", "imugi"],
+    boss: "dragon",
+    unlockCost: 18,
+    reqStars: 18,
+  },
+};
+
+const CHAPTERS = {
+  1: { name: "어두운 밤의 숲", emoji: "🌲", stages: ["1-1", "1-2", "1-3"], reqStars: 0, unlockDesc: "시작부터" },
+  2: { name: "저승의 문", emoji: "⛩️", stages: ["2-1", "2-2", "2-3"], reqStars: 3, unlockDesc: "챕터1에서 별 3개 획득" },
+  3: { name: "용궁", emoji: "🐉", stages: ["3-1", "3-2", "3-3"], reqStars: 9, unlockDesc: "챕터2에서 별 9개 획득" },
+};
+
 /* ─── DAILY CHALLENGES ─── */
 const DAILY_CHALLENGES = [
   { id: "fast", name: "속도전", desc: "이동속도 +50%", effect: { spdMul: 1.5 } },
@@ -1040,8 +1172,11 @@ class Game {
       charSelect: $("screen-chars"), petScreen: $("screen-pet"), shop: $("screen-shop"), settings: $("screen-settings"),
       achievements: $("screen-achievements"), daily: $("screen-daily"),
       leaderboard: $("screen-leaderboard"),
+      stageScreen: $("screen-stages"), stageClearScreen: $("screen-stage-clear"),
       dailyChallenge: $("daily-challenge"), dailyBest: $("daily-best"),
       artifactScreen: $("screen-artifact"),
+      stageList: $("stage-list"), chapterTabs: $("chapter-tabs"), stageTotalStars: $("stage-total-stars"),
+      stageClearStars: $("stage-clear-stars"), stageClearStats: $("stage-clear-stats"),
       hpBar: $("hp-bar"), hpTxt: $("hp-txt"), xpBar: $("xp-bar"), lvTxt: $("lv-txt"),
       timer: $("timer"), kills: $("kills"), wslots: $("weapon-slots"),
       choices: $("choices"), endTitle: $("end-title"), endStats: $("end-stats"),
@@ -1054,7 +1189,7 @@ class Game {
     };
 
     /* menu buttons */
-    $("btn-play").onclick = () => this._showCharSelect();
+    $("btn-play").onclick = () => this._showStageSelect();
     $("btn-shop").onclick = () => this._showShop();
     $("btn-achievements").onclick = () => this._showAchievements();
     $("btn-daily").onclick = () => this._showDaily();
@@ -1088,6 +1223,23 @@ class Game {
 
     /* settings */
     $("btn-back-settings").onclick = () => { this._saveSettingsFromUI(); this._showMenu(); };
+
+    /* stage selection */
+    $("btn-back-stages").onclick = () => this._showMenu();
+
+    /* stage clear */
+    if ($("btn-retry-stage")) $("btn-retry-stage").onclick = () => this._startStage(this.selectedStage);
+    if ($("btn-next-stage")) $("btn-next-stage").onclick = () => {
+      const currentCh = parseInt(this.selectedStage.split("-")[0]);
+      const nextStageId = `${currentCh}-${parseInt(this.selectedStage.split("-")[1]) + 1}`;
+      if (STAGES[nextStageId]) {
+        this.selectedStage = nextStageId;
+        this._startStage(nextStageId);
+      } else {
+        this._showStageSelect();
+      }
+    };
+    if ($("btn-stage-to-menu")) $("btn-stage-to-menu").onclick = () => { showBestRecord(); this._showMenu(); };
 
     /* in-game */
     $("btn-resume").onclick = () => this._unpause();
@@ -1190,9 +1342,125 @@ class Game {
   /* ── SCREEN NAVIGATION ── */
   _hideAll() {
     const screens = [this.ui.menu, this.ui.charSelect, this.ui.petScreen, this.ui.shop, this.ui.settings,
-      this.ui.achievements, this.ui.daily, this.ui.leaderboard, this.ui.hud, this.ui.lvl, this.ui.pause, this.ui.end, this.ui.artifactScreen];
+      this.ui.achievements, this.ui.daily, this.ui.leaderboard, this.ui.hud, this.ui.lvl, this.ui.pause, this.ui.end, this.ui.artifactScreen,
+      this.ui.stageScreen, this.ui.stageClearScreen];
     for (const s of screens) if (s) s.classList.add("hidden");
     if (this.ui.joyZone) this.ui.joyZone.classList.add("hidden");
+  }
+
+  /* ── STAGE SELECTION ── */
+  _showStageSelect() {
+    this._hideAll();
+    this.state = "stageSelect";
+    const progress = loadStageProgress();
+
+    // Update total stars display
+    if (this.ui.stageTotalStars) {
+      this.ui.stageTotalStars.textContent = "⭐ " + progress.totalStars;
+    }
+
+    // Render chapter tabs
+    this._renderChapterTabs(progress);
+
+    // Render first chapter stages
+    this._renderStageList(1, progress);
+
+    this.ui.stageScreen.classList.remove("hidden");
+  }
+
+  _renderChapterTabs(progress) {
+    if (!this.ui.chapterTabs) return;
+    this.ui.chapterTabs.innerHTML = "";
+    for (const [chId, ch] of Object.entries(CHAPTERS)) {
+      const btn = document.createElement("button");
+      btn.className = "chapter-tab" + (this._currentChapter == chId ? " active" : "");
+      btn.textContent = ch.emoji + " " + ch.name;
+      const canUnlock = progress.totalStars >= ch.reqStars;
+      btn.disabled = !canUnlock;
+      btn.onclick = () => {
+        this._currentChapter = parseInt(chId);
+        this._renderChapterTabs(progress);
+        this._renderStageList(parseInt(chId), progress);
+      };
+      this.ui.chapterTabs.appendChild(btn);
+    }
+  }
+
+  _renderStageList(chapter, progress) {
+    if (!this.ui.stageList) return;
+    this.ui.stageList.innerHTML = "";
+    const ch = CHAPTERS[chapter];
+    if (!ch) return;
+
+    for (const stageId of ch.stages) {
+      const stage = STAGES[stageId];
+      const unlocked = progress.unlockedStages.includes(stageId);
+      const stars = progress.stars[stageId] || 0;
+
+      const card = document.createElement("div");
+      card.className = "stage-card" + (unlocked ? "" : " locked");
+      card.innerHTML = `
+        <div class="stage-icon">${chapter === 1 ? "🌲" : chapter === 2 ? "⛩️" : "🐉"}</div>
+        <div class="stage-info">
+          <div class="stage-name">${stage.name}</div>
+          <div class="stage-desc">${stage.desc}</div>
+          <span class="stage-difficulty ${stage.difficulty}">${DIFFICULTIES[stage.difficulty]?.emoji || ""} ${DIFFICULTIES[stage.difficulty]?.name || stage.difficulty}</span>
+        </div>
+        <div class="stage-stars">
+          ${stars >= 1 ? "⭐" : "☆"}
+          ${stars >= 2 ? "⭐" : "☆"}
+          ${stars >= 3 ? "⭐" : "☆"}
+        </div>
+      `;
+
+      if (unlocked) {
+        card.onclick = () => {
+          this.selectedStage = stageId;
+          this._showCharSelect();
+        };
+      }
+
+      this.ui.stageList.appendChild(card);
+    }
+
+    // Back button
+    const backBtn = document.createElement("button");
+    backBtn.className = "btn btn-secondary";
+    backBtn.style.width = "100%";
+    backBtn.style.marginTop = "8px";
+    backBtn.textContent = "← 돌아가기";
+    backBtn.onclick = () => this._showMenu();
+    this.ui.stageList.appendChild(backBtn);
+  }
+
+  _showStageClear(time, stars) {
+    this.state = "stageClear";
+    if (this.ui.stageClearStars) {
+      this.ui.stageClearStars.innerHTML = stars >= 1 ? "⭐⭐⭐" : stars >= 2 ? "⭐⭐" : "⭐";
+    }
+    if (this.ui.stageClearStats) {
+      this.ui.stageClearStats.innerHTML = `시간: ${Math.floor(time / 60)}:${String(Math.floor(time % 60)).padStart(2, "0")} | 데미지: ${Math.floor(this.totalDmg).toLocaleString()}`;
+    }
+    this.ui.stageClearScreen.classList.remove("hidden");
+
+    // Save progress
+    const progress = loadStageProgress();
+    if (!progress.stars[this.selectedStage] || progress.stars[this.selectedStage] < stars) {
+      progress.stars[this.selectedStage] = stars;
+    }
+    progress.totalStars = Object.values(progress.stars).reduce((a, b) => a + b, 0);
+
+    // Unlock next stage
+    const stage = STAGES[this.selectedStage];
+    const nextStageId = this.selectedStage.replace(/(\d+)-(\d+)/, (_, ch, st) => {
+      const nextSt = parseInt(st) + 1;
+      return CHAPTERS[ch].stages.includes(`${ch}-${nextSt}`) ? `${ch}-${nextSt}` : null;
+    });
+    if (nextStageId && !progress.unlockedStages.includes(nextStageId)) {
+      progress.unlockedStages.push(nextStageId);
+    }
+
+    saveStageProgress(progress);
   }
 
   _showMenu() {
@@ -2040,7 +2308,8 @@ class Game {
       this._showLevelUp();
     }
     /* victory (skip in endless mode) */
-    if (this.elapsed >= SURVIVE && !this.endless) this._victory();
+    const surviveTime = this.selectedStage ? STAGES[this.selectedStage].clearTime : SURVIVE;
+    if (this.elapsed >= surviveTime && !this.endless) this._victory();
     /* endless mode: spawn extra boss every 5 min after 10 min */
     if (this.endless && this.elapsed >= SURVIVE) {
       const extra = floor((this.elapsed - SURVIVE) / 300);
@@ -3272,6 +3541,20 @@ class Game {
   _victory() {
     this.state = "end"; this.sfx.bgmStop(); this.sfx.win();
     this.sfx.playBgm("victory");
+
+    // Check if stage mode
+    if (this.selectedStage) {
+      const stage = STAGES[this.selectedStage];
+      const time = this.elapsed;
+      let stars = 1;
+      if (time <= stage.stars[3]) stars = 3;
+      else if (time <= stage.stars[2]) stars = 2;
+
+      this._showStageClear(time, stars);
+      this._finishRun(true);
+      return;
+    }
+
     this.ui.endTitle.textContent = "🎉 퇴마 완료!";
     this.ui.endTitle.style.color = "#ffd93d";
     this.isNewRecord = saveScore({
