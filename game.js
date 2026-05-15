@@ -3636,6 +3636,8 @@ class Game {
     const c = this.ctx, sw = this.sw, sh = this.sh;
     c.clearRect(0, 0, sw, sh);
     if (this.state === "menu" || this.state === "charSelect" || this.state === "shop" || this.state === "settings") return;
+    // Skip rendering if game objects not initialized yet
+    if (!this.cam || !this.p) return;
     console.log("[Render] state:", this.state, "sw:", sw, "sh:", sh, "p:", this.p ? "exists" : "null", "enemies:", this.enemies ? this.enemies.length : 0);
 
     const cx = this.cam.x, cy = this.cam.y;
