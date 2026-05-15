@@ -434,37 +434,87 @@ const CHARACTERS = {
 
 /* ─── ENEMY DEFINITIONS ─── */
 const ETYPES = {
-  dokkaebi:  { name: "도깨비",   hp: 22,  spd: 1.0, r: 13, col: "#e65100", xp: 1,  dmg: 8,  goldMin: 0, goldMax: 1 },
-  wisp:      { name: "쥐불",     hp: 10,  spd: 2.4, r: 8,  col: "#00e5ff", xp: 1,  dmg: 5,  goldMin: 0, goldMax: 0 },
-  skeleton:  { name: "해골병사", hp: 45,  spd: 0.9, r: 14, col: "#efebe9", xp: 3,  dmg: 10, goldMin: 1, goldMax: 2 },
-  ghost:     { name: "처녀귀신", hp: 30,  spd: 1.0, r: 12, col: "#e8eaf6", xp: 4,  dmg: 15, goldMin: 1, goldMax: 3 },
-  bulgasari: { name: "불가사리", hp: 90,  spd: 0.55,r: 18, col: "#78909c", xp: 5,  dmg: 12, goldMin: 3, goldMax: 6 },
-  jangsan:   { name: "장산범",   hp: 35,  spd: 1.5, r: 15, col: "#ff8a65", xp: 3,  dmg: 14, goldMin: 1, goldMax: 2 },
-  imugi:     { name: "이무기",   hp: 250, spd: 0.7, r: 22, col: "#66bb6a", xp: 20, dmg: 18, goldMin: 10, goldMax: 20, elite: true },
-  gumiho:    { name: "구미호",   hp: 800, spd: 0.5, r: 28, col: "#f06292", xp: 80, dmg: 20, boss: true, goldMin: 40, goldMax: 60 },
-  foxClone:  { name: "여우분신", hp: 80,  spd: 1.3, r: 16, col: "#f48fb1", xp: 5,  dmg: 10, goldMin: 1, goldMax: 2 },
-  dokkaKing: { name: "도깨비왕", hp: 400, spd: 0.6, r: 24, col: "#ff3d00", xp: 30, dmg: 22, goldMin: 15, goldMax: 30, elite: true },
-  haetae:    { name: "해태",     hp: 500, spd: 0.45,r: 26, col: "#ffc107", xp: 35, dmg: 25, goldMin: 20, goldMax: 35, elite: true },
+  // 기본 적들 (1-2 스테이지)
+  dokkaebi:  { name: "도깨비",   hp: 25,  spd: 1.0, r: 13, col: "#e65100", xp: 1,  dmg: 10, goldMin: 0, goldMax: 1 },
+  wisp:      { name: "쥐불",     hp: 12,  spd: 2.5, r: 8,  col: "#00e5ff", xp: 1,  dmg: 6,  goldMin: 0, goldMax: 0 },
+  skeleton:  { name: "해골병사", hp: 50,  spd: 0.9, r: 14, col: "#efebe9", xp: 3,  dmg: 12, goldMin: 1, goldMax: 2 },
+  ghost:     { name: "처녀귀신", hp: 35,  spd: 1.1, r: 12, col: "#e8eaf6", xp: 4,  dmg: 18, goldMin: 1, goldMax: 3 },
+  bulgasari: { name: "불가사리", hp: 100, spd: 0.55, r: 18, col: "#78909c", xp: 5,  dmg: 15, goldMin: 3, goldMax: 6 },
+  jangsan:   { name: "장산범",   hp: 40,  spd: 1.6, r: 15, col: "#ff8a65", xp: 3,  dmg: 16, goldMin: 1, goldMax: 2 },
+
+  // 중급 적들 (2-3 스테이지)
+  goblin:    { name: "Goblin",  hp: 30,  spd: 1.8, r: 10, col: "#8d6e63", xp: 2,  dmg: 14, goldMin: 1, goldMax: 2 },
+  wetGhost:  { name: "물귀신",  hp: 45,  spd: 1.2, r: 11, col: "#4dd0e1", xp: 5,  dmg: 20, goldMin: 2, goldMax: 4 },
+  fireEnt:   { name: "불꽃정령", hp: 80,  spd: 0.8, r: 16, col: "#ff5722", xp: 6,  dmg: 22, goldMin: 3, goldMax: 5 },
+  tombKeeper:{ name: "무덤지기", hp: 120, spd: 0.7, r: 17, col: "#455a64", xp: 7,  dmg: 18, goldMin: 4, goldMax: 7 },
+
+  // 고급 적들 (3-4 스테이지)
+  demonKnight:{ name: "악마기사", hp: 200, spd: 0.9, r: 20, col: "#37474f", xp: 12, dmg: 30, goldMin: 8, goldMax: 15 },
+  soulSiphon:{ name: "영혼 흡수자", hp: 60,  spd: 1.4, r: 12, col: "#7c4dff", xp: 8,  dmg: 25, goldMin: 5, goldMax: 8 },
+  iceGolem:  { name: "얼음골렘", hp: 180, spd: 0.5, r: 22, col: "#90caf9", xp: 10, dmg: 28, goldMin: 6, goldMax: 12 },
+  plagueRat: { name: "역병쥐",   hp: 55,  spd: 2.0, r: 14, col: "#a1887f", xp: 6,  dmg: 20, goldMin: 3, goldMax: 5 },
+
+  // 엘리트 적들
+  imugi:     { name: "이무기",   hp: 350, spd: 0.7, r: 22, col: "#66bb6a", xp: 25, dmg: 35, goldMin: 15, goldMax: 25, elite: true },
+  dokkaKing: { name: "도깨비왕", hp: 500, spd: 0.6, r: 24, col: "#ff3d00", xp: 35, dmg: 40, goldMin: 20, goldMax: 35, elite: true },
+  haetae:    { name: "해태",     hp: 600, spd: 0.45, r: 26, col: "#ffc107", xp: 40, dmg: 45, goldMin: 25, goldMax: 40, elite: true },
+  ghostKing: { name: "귀왕",     hp: 450, spd: 0.8, r: 23, col: "#5c6bc0", xp: 30, dmg: 38, goldMin: 18, goldMax: 30, elite: true },
+
+  // 보스들
+  gumiho:    { name: "구미호",   hp: 1200, spd: 0.5, r: 30, col: "#f06292", xp: 100, dmg: 50, boss: true, goldMin: 60, goldMax: 100 },
+  dragon:    { name: "용왕",     hp: 1800, spd: 0.4, r: 35, col: "#1e88e5", xp: 150, dmg: 65, boss: true, goldMin: 100, goldMax: 150 },
+  yeomra:    { name: "염라대왕", hp: 2000, spd: 0.35, r: 38, col: "#212121", xp: 200, dmg: 70, boss: true, goldMin: 150, goldMax: 200 },
+
+  // 특수 적들
+  foxClone:  { name: "여우분신", hp: 100, spd: 1.4, r: 16, col: "#f48fb1", xp: 6,  dmg: 15, goldMin: 1, goldMax: 3 },
+  shadow:    { name: "그림자",  hp: 25,  spd: 2.2, r: 9,  col: "#263238", xp: 2,  dmg: 12, goldMin: 0, goldMax: 1 },
+  mimic:     { name: "미믹",    hp: 150, spd: 0.3, r: 14, col: "#ffd54f", xp: 15, dmg: 8,  goldMin: 20, goldMax: 30, special: "decepti ve" },
 };
 
+// 적 생성 테이블 - 스테이지별 다양화
 const SPAWN_TBL = [
-  { t: 0,   types: ["dokkaebi"] },
-  { t: 60,  types: ["dokkaebi", "wisp"] },
-  { t: 120, types: ["dokkaebi", "wisp", "bulgasari"] },
-  { t: 180, types: ["dokkaebi", "wisp", "skeleton", "bulgasari"] },
-  { t: 240, types: ["wisp", "skeleton", "ghost", "jangsan"] },
-  { t: 360, types: ["dokkaebi", "wisp", "skeleton", "ghost", "jangsan", "bulgasari"] },
-  { t: 480, types: ["skeleton", "ghost", "jangsan", "bulgasari"] },
+  // 0-2분: 기본 적들
+  { t: 0,   types: ["dokkaebi", "shadow"] },
+  { t: 45,  types: ["dokkaebi", "wisp", "goblin"] },
+  { t: 90,  types: ["dokkaebi", "wisp", "skeleton", "goblin"] },
+  { t: 135, types: ["dokkaebi", "wisp", "bulgasari", "skeleton"] },
+  // 2-4분: 중급 적들 추가
+  { t: 180, types: ["wisp", "skeleton", "ghost", "goblin", "wetGhost"] },
+  { t: 225, types: ["skeleton", "ghost", "bulgasari", "wetGhost", "jangsan"] },
+  { t: 270, types: ["ghost", "jangsan", "bulgasari", "wetGhost", "fireEnt"] },
+  // 4-6분: 고급 적들 추가
+  { t: 315, types: ["ghost", "fireEnt", "tombKeeper", "goblin", "wetGhost"] },
+  { t: 360, types: ["tombKeeper", "fireEnt", "plagueRat", "demonKnight", "soulSiphon"] },
+  { t: 405, types: ["demonKnight", "soulSiphon", "iceGolem", "plagueRat", "fireEnt"] },
+  // 6-8분: 강적들
+  { t: 450, types: ["demonKnight", "soulSiphon", "iceGolem", "ghost", "tombKeeper"] },
+  { t: 495, types: ["iceGolem", "soulSiphon", "plagueRat", "ghostKing", "wetGhost"] },
+  // 8-10분: 보스 &终极
+  { t: 540, types: ["demonKnight", "iceGolem", "ghostKing", "plagueRat", "fireEnt"] },
+  { t: 570, types: ["iceGolem", "ghostKing", "imugi", "dokkaKing", "haetae"] },
 ];
+
+// 적 강도 스케일링 - 시간에 따라 증가
+const ENEMY_SCALING = {
+  hpScale: 1.0,      // hp 증가율 (분당)
+  dmgScale: 1.0,     // 데미지 증가율 (분당)
+  spawnScale: 1.0,   // 생성 수 증가율 (분당)
+  eliteChance: 0.03, // 엘리트 확률 (시간에 따라 증가)
+};
 
 const WAVE_NAMES = [
   { t: 0,   text: "🌙 요괴야행 시작" },
-  { t: 60,  text: "🔥 쥐불 출현!" },
-  { t: 120, text: "🪨 불가사리 출현!" },
-  { t: 180, text: "💀 해골병사 출현!" },
-  { t: 240, text: "👻 처녀귀신 · 장산범 출현!" },
-  { t: 290, text: "⚠️ 보스 접근 중..." },
-  { t: 360, text: "🌪️ 대규모 습격!" },
+  { t: 45,  text: "👺 고블린 출현!" },
+  { t: 90,  text: "💀 해골병사 출현!" },
+  { t: 135, text: "🪨 불가사리 출현!" },
+  { t: 180, text: "👻 처녀귀신 · 물귀신 출현!" },
+  { t: 225, text: "🔥 불꽃정령 · 장산범 출현!" },
+  { t: 270, text: "⚔️ 악마기사 출현!" },
+  { t: 315, text: "🧊 얼음골렘 · 영혼흡수자!" },
+  { t: 360, text: "👹 강적들 출현!" },
+  { t: 405, text: "⚠️ 엘리트 적 출현!" },
+  { t: 450, text: "🌪️ 대규모 습격!" },
+  { t: 540, text: "🐉 보스 등장!" },
 ];
 
 /* ─── WEAPON DEFINITIONS ─── */
@@ -918,11 +968,13 @@ const SYNERGIES = [
 
 /* ─── DIFFICULTY ─── */
 const DIFFICULTIES = {
-  easy:      { name: "쉬움",   emoji: "🟢", hpMul: 0.7, dmgMul: 0.7, spdMul: 0.85, spawnMul: 0.8,  goldMul: 0.5, xpMul: 1.3 },
-  normal:    { name: "보통",   emoji: "🟡", hpMul: 1,   dmgMul: 1,   spdMul: 1,    spawnMul: 1,     goldMul: 1,   xpMul: 1 },
-  hard:      { name: "어려움", emoji: "🔴", hpMul: 1.5, dmgMul: 1.3, spdMul: 1.15, spawnMul: 1.3,   goldMul: 1.5, xpMul: 0.8 },
-  nightmare: { name: "악몽",   emoji: "💀", hpMul: 2.5, dmgMul: 1.8, spdMul: 1.3,  spawnMul: 1.6,   goldMul: 2.5, xpMul: 0.6,
-    unlockCheck: (s) => s.gamesWon >= 1 },
+  easy:      { name: "쉬움",   emoji: "🟢", hpMul: 0.8, dmgMul: 0.8, spdMul: 0.9, spawnMul: 0.7,  goldMul: 0.6, xpMul: 1.4, reqLevel: 1 },
+  normal:    { name: "보통",   emoji: "🟡", hpMul: 1.0, dmgMul: 1.0, spdMul: 1.0, spawnMul: 1.0,  goldMul: 1.0, xpMul: 1.0, reqLevel: 1 },
+  hard:      { name: "어려움", emoji: "🔴", hpMul: 1.6, dmgMul: 1.4, spdMul: 1.1, spawnMul: 1.4,  goldMul: 1.6, xpMul: 0.7, reqLevel: 10 },
+  nightmare: { name: "악몽",   emoji: "💀", hpMul: 2.5, dmgMul: 2.0, spdMul: 1.25, spawnMul: 1.8,  goldMul: 2.5, xpMul: 0.5, reqLevel: 30,
+    unlockCheck: (s) => s.gamesWon >= 3 },
+  hell:      { name: "지옥",   emoji: "🔥", hpMul: 4.0, dmgMul: 3.0, spdMul: 1.4, spawnMul: 2.5,  goldMul: 4.0, xpMul: 0.3, reqLevel: 50,
+    unlockCheck: (s) => s.gamesWon >= 10 },
 };
 
 /* ═══════════════════════════ GAME ═══════════════════════════ */
@@ -2015,12 +2067,14 @@ class Game {
   _spawnEnemies(dt) {
     const mf = this.elapsed / 60;
     const spdMul = this.diff.spawnMul;
-    this.spawnInterval = max(300, (1500 - mf * 100) / spdMul);
+    // 난이도 스케일링: 시간에 따라 생성 속도加快
+    const difficultyScale = 1 + mf * 0.08; // 분당 8%씩 증가
+    this.spawnInterval = max(200, (1500 - mf * 120) / spdMul / difficultyScale);
     this.spawnTimer -= dt * 1000; if (this.spawnTimer > 0) return;
     this.spawnTimer = this.spawnInterval;
     /* hard cap total enemies to prevent frame drops */
-    if (this.enemies.length >= 250) return;
-    const count = min(12, 2 + floor(mf * 0.9 * spdMul));
+    if (this.enemies.length >= 300) return;
+    const count = min(15, 2 + floor(mf * 1.1 * spdMul * difficultyScale));
     let types = ["dokkaebi"];
     const spawnTbl = (this.mapDef && this.mapDef.spawnOverride) || SPAWN_TBL;
     for (const row of spawnTbl) if (this.elapsed >= row.t) types = row.types;
