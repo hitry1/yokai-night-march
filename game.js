@@ -1107,7 +1107,7 @@ class Game {
 
   /* ── SCREEN NAVIGATION ── */
   _hideAll() {
-    const screens = [this.ui.menu, this.ui.charSelect, this.ui.shop, this.ui.settings,
+    const screens = [this.ui.menu, this.ui.charSelect, this.ui.petScreen, this.ui.shop, this.ui.settings,
       this.ui.achievements, this.ui.daily, this.ui.leaderboard, this.ui.hud, this.ui.lvl, this.ui.pause, this.ui.end, this.ui.artifactScreen];
     for (const s of screens) if (s) s.classList.add("hidden");
     if (this.ui.joyZone) this.ui.joyZone.classList.add("hidden");
