@@ -1001,7 +1001,7 @@ class Game {
     $("btn-settings").onclick = () => this._showSettings();
 
     /* pet select buttons */
-    $("btn-skip-pet").onclick = () => this._showArtifactSelect();
+    $("btn-skip-pet").onclick = () => { this.chosenPet = null; this._startGame(); };
 
     /* leaderboard tabs */
     $("tab-easy").onclick = () => this._loadLeaderboard("easy");
@@ -1163,8 +1163,8 @@ class Game {
       card.append(icon, name, desc);
       card.onclick = () => {
         this.chosenPet = id;
-        // Auto-advance to artifact selection
-        this._showArtifactSelect();
+        // Skip artifact selection, go directly to game
+        this._startGame();
       };
       box.appendChild(card);
     }
@@ -1625,6 +1625,13 @@ class Game {
 
   /* ── START GAME ── */
   _startGame() {
+    // Safety check - if no character selected, go back to menu
+    if (!this.selectedChar || !CHARACTERS[this.selectedChar]) {
+      console.error("No character selected, going to menu");
+      this._showMenu();
+      return;
+    }
+
     this.sfx.init(); this.sfx.resume(); this.sfx.bgmStart("gameStart"); _eid = 0;
     this._prevUnlocks = [...this.unlocks.characters]; // snapshot before run
     const cx = W / 2, cy = H / 2;
