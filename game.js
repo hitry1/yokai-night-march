@@ -1103,6 +1103,10 @@ class Game {
     this.cvs.height = window.innerHeight * dpr;
     this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     this.sw = window.innerWidth; this.sh = window.innerHeight;
+    // Fallback if canvas size is 0 (e.g., called before DOM ready)
+    if (this.sw === 0 || this.sh === 0) {
+      this.sw = 800; this.sh = 600;
+    }
   }
 
   /* ── SCREEN NAVIGATION ── */
@@ -1740,6 +1744,8 @@ class Game {
       armor, magnetR, cdMul, xpMul, dmgMul, baseDmgMul: dmgMul, regen,
       invT: 0, flashT: 0, facing: 0,
     };
+    // Ensure canvas has valid size before setting camera
+    if (this.sw <= 0 || this.sh <= 0) this._resize();
     this.cam = { x: cx - this.sw / 2, y: cy - this.sh / 2 };
     this.shakeT = 0; this.shakeI = 0;
     this.weapons = []; this.passiveLvs = {};
@@ -3132,11 +3138,22 @@ class Game {
   _refreshWeaponSlots() {
     const box = this.ui.wslots;
     while (box.firstChild) box.removeChild(box.firstChild);
-    for (const w of this.weapons) {
-      const def = getWDef(w.type);
-      const el = document.createElement("div"); el.className = "wslot"; el.textContent = def.icon;
-      const lv = document.createElement("span"); lv.className = "wslot-lv"; lv.textContent = w.lv + 1;
-      el.appendChild(lv); box.appendChild(el);
+    const maxSlots = 6;
+    for (let i = 0; i < maxSlots; i++) {
+      const w = this.weapons[i];
+      const el = document.createElement("div");
+      el.className = "wslot";
+      if (w) {
+        const def = getWDef(w.type);
+        el.textContent = def.icon;
+        const lv = document.createElement("span");
+        lv.className = "wslot-lv";
+        lv.textContent = w.lv + 1;
+        el.appendChild(lv);
+      } else {
+        el.textContent = "";
+      }
+      box.appendChild(el);
     }
   }
 
