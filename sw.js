@@ -1,5 +1,5 @@
 /* Service Worker — Yokai Night March (요괴야행) */
-const CACHE_NAME = "yokai-v4a";
+const CACHE_NAME = "yokai-v5";
 const ASSETS = [
   "/",
   "/index.html",
