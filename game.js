@@ -1786,6 +1786,7 @@ class Game {
     this._hideAll();
     this.ui.hud.classList.remove("hidden");
     if (this.isMobile) this.ui.joyZone.classList.remove("hidden");
+    console.log("[Game] Starting - sw:", this.sw, "sh:", this.sh, "p.x:", this.p.x, "p.y:", this.p.y, "cam.x:", this.cam.x);
     this.state = "play"; this.lastT = performance.now();
     this._refreshWeaponSlots();
   }
@@ -3635,6 +3636,7 @@ class Game {
     const c = this.ctx, sw = this.sw, sh = this.sh;
     c.clearRect(0, 0, sw, sh);
     if (this.state === "menu" || this.state === "charSelect" || this.state === "shop" || this.state === "settings") return;
+    console.log("[Render] state:", this.state, "sw:", sw, "sh:", sh, "p:", this.p ? "exists" : "null", "enemies:", this.enemies ? this.enemies.length : 0);
 
     const cx = this.cam.x, cy = this.cam.y;
     const toX = x => x - cx, toY = y => y - cy;
