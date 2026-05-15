@@ -1163,7 +1163,8 @@ class Game {
       card.append(icon, name, desc);
       card.onclick = () => {
         this.chosenPet = id;
-        this._renderPetList();
+        // Auto-advance to artifact selection
+        this._showArtifactSelect();
       };
       box.appendChild(card);
     }
