@@ -271,6 +271,15 @@ class Sfx {
   async playBgm(type) {
     if (!this.on) return;
 
+    // Stop ALL previously loaded BGM to prevent multiple sounds playing
+    for (const key in this.bgmLoaded) {
+      const audio = this.bgmLoaded[key];
+      if (audio) {
+        audio.pause();
+        audio.currentTime = 0;
+      }
+    }
+
     // Stop current BGM
     if (this.bgmAudio) {
       this.bgmAudio.pause();
