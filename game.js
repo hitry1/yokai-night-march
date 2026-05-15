@@ -1625,11 +1625,10 @@ class Game {
 
   /* ── START GAME ── */
   _startGame() {
-    // Safety check - if no character selected, go back to menu
+    // Safety check - if no character selected, use default
     if (!this.selectedChar || !CHARACTERS[this.selectedChar]) {
-      console.error("No character selected, going to menu");
-      this._showMenu();
-      return;
+      console.warn("No character selected, using exorcist");
+      this.selectedChar = "exorcist";
     }
 
     this.sfx.init(); this.sfx.resume(); this.sfx.bgmStart("gameStart"); _eid = 0;
