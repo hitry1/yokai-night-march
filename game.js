@@ -3642,7 +3642,7 @@ class Game {
     this.ui.lvTxt.textContent = "Lv " + this.level;
     const m = floor(this.elapsed / 60), s = floor(this.elapsed % 60);
     this.ui.timer.textContent = String(m).padStart(2, "0") + ":" + String(s).padStart(2, "0");
-    this.ui.kills.textContent = this.killCount + " KILLS";
+    this.ui.kills.textContent = Math.floor(this.totalDmg).toLocaleString() + " DMG";
     if (this.ui.hudGold) this.ui.hudGold.textContent = "💰 " + this.goldEarned;
     if (this.ui.diffBadge) {
       const d = DIFFICULTIES[this.settings.difficulty];
