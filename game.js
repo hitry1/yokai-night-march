@@ -1812,8 +1812,9 @@ class Game {
     this._hideAll();
     this.ui.hud.classList.remove("hidden");
     if (this.isMobile) this.ui.joyZone.classList.remove("hidden");
-    console.log("[Game] Starting - sw:", this.sw, "sh:", this.sh, "p.x:", this.p.x, "p.y:", this.p.y, "cam.x:", this.cam.x);
     this.state = "play"; this.lastT = performance.now();
+    this._initialBgmPlayed = false;
+    this._bgmCooldown = 0;
     this._refreshWeaponSlots();
   }
 
@@ -2087,31 +2088,19 @@ class Game {
     // BGM change cooldown (prevent rapid switches)
     if (this._bgmCooldown && this._bgmCooldown > 0) return;
 
-    // Check if boss is present
-    const hasBoss = this.enemies.some(e => e.boss);
-
-    // HP below 30%
-    const hpRatio = this.p.hp / this.p.maxHp;
-
-    // Determine BGM based on conditions
-    let targetBgm = "battleEarly";
-    if (hasBoss) {
-      targetBgm = "boss";
-    } else if (hpRatio < 0.3) {
-      targetBgm = "hpDanger";
-    } else if (this.elapsed < 120) {
-      targetBgm = "battleEarly";
-    } else if (this.elapsed < 360) {
-      targetBgm = "battleMid";
-    } else {
-      targetBgm = "battleLate";
+    // Keep initial BGM throughout the game (no dynamic changes)
+    // Only play once at start
+    if (!this._initialBgmPlayed) {
+      this.sfx.playBgm("battleEarly");
+      this._initialBgmPlayed = true;
+      this._bgmCooldown = 2;
+      return;
     }
 
-    // Only change if different
-    if (this.sfx.currentBgm !== targetBgm) {
-      this.sfx.playBgm(targetBgm);
-      // Set cooldown to prevent rapid changes
-      this._bgmCooldown = 1.5;
+    // Only change if different (rare cases like pause/unpause)
+    if (this.sfx.currentBgm !== "battleEarly" && this.sfx.currentBgm !== "battleMid" && this.sfx.currentBgm !== "battleLate") {
+      this.sfx.playBgm("battleEarly");
+      this._bgmCooldown = 2;
     }
   }
 
