@@ -352,6 +352,26 @@ html, body {
 .sound-btn:hover { background: rgba(255,255,255,.2); transform: scale(1.1); }
 .sound-btn:active { transform: scale(.95); }
 
+/* ── volume panel ── */
+.volume-panel {
+  position: fixed; top: 60px; right: 16px; z-index: 55;
+  background: rgba(0,0,0,.85); border-radius: 12px; padding: 12px;
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255,255,255,.1);
+}
+.vol-row {
+  display: flex; align-items: center; gap: 8px; margin: 6px 0;
+}
+.vol-row span { font-size: 1rem; }
+.vol-row input[type="range"] {
+  width: 100px; height: 4px; -webkit-appearance: none; appearance: none;
+  background: rgba(255,255,255,.2); border-radius: 2px; outline: none;
+}
+.vol-row input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%;
+  background: #6366f1; cursor: pointer;
+}
+
 /* ── joystick ── */
 #joy-zone { position: fixed; left: 0; bottom: 0; width: 50%; height: 50%; z-index: 60; }
 

@@ -1052,13 +1052,30 @@ class Game {
 
     /* sound toggle */
     this.ui.soundBtn = $("btn-sound");
+    this.ui.volumePanel = $("volume-panel");
     this.ui.soundBtn.onclick = () => {
-      this.sfx.on = !this.sfx.on;
-      if (!this.sfx.on) this.sfx.bgmStop();
-      else if (this.state === "play") { this.sfx.init(); this.sfx.resume(); this.sfx.bgmStart(); }
-      this.ui.soundBtn.textContent = this.sfx.on ? "🔊" : "🔇";
-      this.ui.soundBtn.setAttribute("aria-label", this.sfx.on ? "음소거" : "소리 켜기");
+      // Toggle volume panel
+      this.ui.volumePanel.classList.toggle("hidden");
     };
+    // Volume sliders
+    const sfxSlider = $("vol-sfx");
+    const bgmSlider = $("vol-bgm");
+    if (sfxSlider) {
+      sfxSlider.value = this.settings.sfxVol || 50;
+      sfxSlider.oninput = () => {
+        this.settings.sfxVol = parseInt(sfxSlider.value);
+        this.sfx.sfxVol = this.settings.sfxVol / 100;
+        if (this.sfx.g) this.sfx.g.gain.value = this.sfx.sfxVol * 0.5;
+      };
+    }
+    if (bgmSlider) {
+      bgmSlider.value = this.settings.bgmVol || 30;
+      bgmSlider.oninput = () => {
+        this.settings.bgmVol = parseInt(bgmSlider.value);
+        this.sfx.bgmVol = this.settings.bgmVol / 100;
+        this.sfx.setBgmVol(this.sfx.bgmVol);
+      };
+    }
   }
 
   /* ── INPUT ── */
