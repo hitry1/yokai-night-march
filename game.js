@@ -1818,6 +1818,9 @@ class Game {
   _update(dt) {
     this.elapsed += dt;
 
+    // BGM cooldown
+    if (this._bgmCooldown > 0) this._bgmCooldown -= dt;
+
     /* combo timer countdown (3 second window) */
     if (this.combo.count > 0) {
       this.combo.timer -= dt;
@@ -2064,6 +2067,9 @@ class Game {
   _updateBgm() {
     if (!this.sfx.bgmPlaying) return;
 
+    // BGM change cooldown (prevent rapid switches)
+    if (this._bgmCooldown && this._bgmCooldown > 0) return;
+
     // Check if boss is present
     const hasBoss = this.enemies.some(e => e.boss);
 
@@ -2087,6 +2093,8 @@ class Game {
     // Only change if different
     if (this.sfx.currentBgm !== targetBgm) {
       this.sfx.playBgm(targetBgm);
+      // Set cooldown to prevent rapid changes
+      this._bgmCooldown = 1.5;
     }
   }
 
