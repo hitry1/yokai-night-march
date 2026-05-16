@@ -5414,9 +5414,11 @@ class Game {
     c.clearRect(0, 0, sw, sh);
     if (this.state === "menu" || this.state === "charSelect" || this.state === "shop" || this.state === "settings") return;
     if (!this.cam || !this.p) {
-      // Debug: draw red box if player not ready
+      // Debug: show what's happening
       c.fillStyle = "red"; c.fillRect(sw/2-50, sh/2-50, 100, 100);
       c.fillStyle = "white"; c.font = "16px sans-serif"; c.fillText("Player not ready", sw/2-60, sh/2+70);
+      c.fillText("State: " + this.state, sw/2-40, sh/2+90);
+      c.fillText("cam: " + (!!this.cam) + " p: " + (!!this.p), sw/2-40, sh/2+110);
       return;
     }
 
