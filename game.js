@@ -2819,6 +2819,11 @@ class Game {
     requestAnimationFrame(() => this._raf());
   }
 
+  /* ── DEBUG HELPERS ── */
+  _debugLog(msg) {
+    if (this._debugMode) console.log("[Game]", msg);
+  }
+
   /* ═══════════════════ UPDATE ═══════════════════ */
   _update(dt) {
     this.elapsed += dt;
@@ -4971,7 +4976,8 @@ class Game {
     c.clearRect(0, 0, sw, sh);
     if (this.state === "menu" || this.state === "charSelect" || this.state === "shop" || this.state === "settings") return;
     // Skip rendering if game objects not initialized yet
-    if (!this.cam || !this.p) return;
+    if (!this.cam || !this.p) { console.log("[Render] Skipping - cam or p not initialized"); return; }
+    if (this.enemies.length === 0 && this.elapsed < 1) console.log("[Render] No enemies yet, elapsed:", this.elapsed.toFixed(2));
 
     const cx = this.cam.x, cy = this.cam.y;
     const toX = x => x - cx, toY = y => y - cy;
