@@ -3100,6 +3100,7 @@ class Game {
     this._initialBgmPlayed = false;
     this._bgmCooldown = 0;
     this._refreshWeaponSlots();
+    console.log("[Game] _startGame COMPLETE. cam:", !!this.cam, "p:", !!this.p);
   }
 
   _addWeapon(type) { this.weapons.push({ type, lv: 0, lastFire: 0, hitMap: new Map() }); }
@@ -5416,9 +5417,9 @@ class Game {
     if (!this.cam || !this.p) {
       // Debug: show what's happening
       c.fillStyle = "red"; c.fillRect(sw/2-50, sh/2-50, 100, 100);
-      c.fillStyle = "white"; c.font = "16px sans-serif"; c.fillText("Player not ready", sw/2-60, sh/2+70);
-      c.fillText("State: " + this.state, sw/2-40, sh/2+90);
-      c.fillText("cam: " + (!!this.cam) + " p: " + (!!this.p), sw/2-40, sh/2+110);
+      c.fillStyle = "white"; c.font = "16px sans-serif"; c.fillText("State: " + this.state, sw/2-50, sh/2+70);
+      c.fillText("cam: " + (!!this.cam) + " p: " + (!!this.p), sw/2-50, sh/2+90);
+      console.log("DEBUG: state=", this.state, "cam=", this.cam, "p=", this.p);
       return;
     }
 
