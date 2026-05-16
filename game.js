@@ -1927,6 +1927,7 @@ class Game {
     $("tab-char").onclick = () => this._showCodexTab("char");
     $("tab-enemy").onclick = () => this._showCodexTab("enemy");
     $("tab-weapon").onclick = () => this._showCodexTab("weapon");
+    $("tab-bgm").onclick = () => this._showCodexTab("bgm");
     $("btn-back-codex").onclick = () => { this.ui.codexScreen.classList.add("hidden"); this.ui.menu.classList.remove("hidden"); };
 
     /* menu buttons */
@@ -2680,6 +2681,46 @@ class Game {
         `;
         box.appendChild(card);
       }
+    } else if (tab === "bgm") {
+      // BGM Codex
+      const bgmList = [
+        { key: "menu", name: "메인 메뉴", desc: "메인 메뉴에서流れる 배경음", icon: "🏠" },
+        { key: "gameStart", name: "게임 시작", desc: "게임 시작 시流れる 음악", icon: "🎮" },
+        { key: "battleEarly", name: "초반 전투", desc: "게임 시작 후 초기 전투BGM", icon: "⚔️" },
+        { key: "battleMid", name: "중반 전투", desc: "중반 전투에서 나오는 음악", icon: "⚔️" },
+        { key: "battleLate", name: "후반 전투", desc: "후반 전투의 긴장감", icon: "🔥" },
+        { key: "elite", name: "엘리트 전투", desc: "엘리트 몬스터 등장 시", icon: "⭐" },
+        { key: "magic", name: "마법 효과음", desc: "마법 사용 시 배경음", icon: "✨" },
+        { key: "boss", name: "보스 등장", desc: "보스 스폰 시 음악", icon: "👹" },
+        { key: "bossAction", name: "보스 전투", desc: "보스 전투 중的音乐", icon: "👹" },
+        { key: "final", name: "최종 전투", desc: "최종 스테이지 배경음", icon: "💀" },
+        { key: "hpDanger", name: "위험 상태", desc: "HP가 낮을 때의 긴장감", icon: "💔" },
+        { key: "victory", name: "승리", desc: "게임 클리어 시 음악", icon: "🏆" },
+        { key: "shop", name: "상점", desc: "상점 화면 배경음", icon: "🏪" },
+      ];
+      for (const bgm of bgmList) {
+        const card = document.createElement("div");
+        card.className = "codex-card";
+        card.innerHTML = `
+          <div class="codex-icon">${bgm.icon}</div>
+          <div class="codex-name">${bgm.name}</div>
+          <div class="codex-desc">${bgm.desc}</div>
+          <div class="codex-stats">${BGM_FILES[bgm.key] || "파일 없음"}</div>
+          <button class="btn btn-secondary bgm-preview-btn" data-bgm="${bgm.key}" style="margin-top:8px;padding:6px 16px;font-size:0.8rem;">🔊 미리듣기</button>
+        `;
+        box.appendChild(card);
+      }
+      // Add BGM preview click handlers
+      setTimeout(() => {
+        document.querySelectorAll(".bgm-preview-btn").forEach(btn => {
+          btn.onclick = (e) => {
+            e.stopPropagation();
+            const bgmKey = btn.dataset.bgm;
+            this.sfx.init();
+            this.sfx.playBgm(bgmKey);
+          };
+        });
+      }, 100);
     }
   }
 
@@ -3112,10 +3153,12 @@ class Game {
   /* ── RAF ── */
   _raf() {
     try {
-      console.log("RAF: state=", this.state, "has cam:", !!this.cam, "has p:", !!this.p);
       const now = performance.now();
       if (this.state === "play") {
-        console.log("  -> update running, dt calculated");
+        if (!this.cam || !this.p) {
+          console.log("RAF: play state but no cam/p, calling _startGame");
+          this._startGame();
+        }
         const dt = min((now - this.lastT) / 1000, 0.05); this.lastT = now; this._update(dt);
       } else this.lastT = now;
       this._render();

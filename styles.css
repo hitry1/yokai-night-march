@@ -621,6 +621,8 @@ body::before {
 .codex-name { font-size: .85rem; color: #fff; font-weight: 600; }
 .codex-desc { font-size: .7rem; color: rgba(255,255,255,.5); line-height: 1.3; }
 .codex-stats { font-size: .7rem; color: #7dd3fc; margin-top: 4px; }
+.bgm-preview-btn { background: linear-gradient(135deg, #4caf50, #2e7d32) !important; }
+.bgm-preview-btn:hover { background: linear-gradient(135deg, #66bb6a, #388e3c) !important; }
 
 /* ── STAGE SELECTION ── */
 #screen-stages::before {
