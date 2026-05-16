@@ -3105,7 +3105,15 @@ class Game {
 
   _addWeapon(type) { this.weapons.push({ type, lv: 0, lastFire: 0, hitMap: new Map() }); }
   _pause() { this.state = "pause"; this.ui.pause.classList.remove("hidden"); }
-  _unpause() { this.state = "play"; this.ui.pause.classList.add("hidden"); this.lastT = performance.now(); }
+  _unpause() {
+    // If player not initialized, restart game
+    if (!this.cam || !this.p) {
+      console.log("[Game] Player not initialized on resume, calling _startGame");
+      this._startGame();
+      return;
+    }
+    this.state = "play"; this.ui.pause.classList.add("hidden"); this.lastT = performance.now();
+  }
 
   /* ── RAF ── */
   _raf() {
@@ -5415,10 +5423,13 @@ class Game {
     c.clearRect(0, 0, sw, sh);
     if (this.state === "menu" || this.state === "charSelect" || this.state === "shop" || this.state === "settings") return;
     if (!this.cam || !this.p) {
-      // Debug: show what's happening
-      c.fillStyle = "red"; c.fillRect(sw/2-50, sh/2-50, 100, 100);
-      c.fillStyle = "white"; c.font = "16px sans-serif"; c.fillText("State: " + this.state, sw/2-50, sh/2+70);
-      c.fillText("cam: " + (!!this.cam) + " p: " + (!!this.p), sw/2-50, sh/2+90);
+      // Debug: show what's happening - make it bigger and more visible
+      c.fillStyle = "rgba(255,0,0,0.3)"; c.fillRect(0, 0, sw, sh);
+      c.fillStyle = "yellow"; c.font = "bold 24px sans-serif";
+      c.fillText("PROBLEM: cam=" + !!this.cam + " p=" + !!this.p, 20, 40);
+      c.fillText("State=" + this.state, 20, 70);
+      c.font = "16px sans-serif";
+      c.fillText("Press ESC to pause/resume to fix", 20, 100);
       console.log("DEBUG: state=", this.state, "cam=", this.cam, "p=", this.p);
       return;
     }
