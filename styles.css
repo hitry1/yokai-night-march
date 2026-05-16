@@ -67,6 +67,29 @@ body::before {
   to { opacity: 1; transform: scale(1); }
 }
 
+/* ── Enhanced UI Animations ── */
+.btn, .char-card, .pet-card, .tab-btn, .choice-card {
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.btn:active { transform: scale(0.95); }
+.tab-btn.active {
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
+}
+.achievement-card {
+  transition: all 0.3s ease;
+}
+.achievement-card:hover {
+  transform: translateX(5px) scale(1.02);
+}
+
+/* ── Glow Effects ── */
+@keyframes glowPulse {
+  0%, 100% { box-shadow: 0 0 10px rgba(255, 215, 0, 0.3); }
+  50% { box-shadow: 0 0 25px rgba(255, 215, 0, 0.6); }
+}
+.rare { animation: glowPulse 2s ease-in-out infinite; }
+
 /* ── overlays ── */
 .ov {
   position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;

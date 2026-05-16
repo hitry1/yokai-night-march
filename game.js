@@ -581,6 +581,84 @@ class VFX {
     this.bloodSplats = this.bloodSplats.filter(b => b.life > 0);
   }
 
+  /* ── MAGIC AURAS ── */
+  addMagicAura(x, y, color, radius) {
+    this.particles.push({
+      x, y, vx: 0, vy: 0, life: 0.8, maxLife: 0.8,
+      r: radius, col: color, grav: 0, fade: true,
+      blend: "lighter", isAura: true, rotation: rand(0, TAU),
+    });
+  }
+
+  /* ── EXPLOSION ── */
+  addExplosion(x, y, color, count = 20) {
+    for (let i = 0; i < count; i++) {
+      const a = rand(0, TAU);
+      const spd = rand(100, 300);
+      this.particles.push({
+        x, y, vx: cos(a) * spd, vy: sin(a) * spd,
+        life: rand(0.3, 0.8), maxLife: 0.8,
+        r: rand(3, 8), col: color, grav: rand(-50, 50),
+        fade: true, blend: "lighter",
+      });
+    }
+  }
+
+  /* ── HEAL EFFECT ── */
+  addHealEffect(x, y) {
+    for (let i = 0; i < 8; i++) {
+      const a = TAU / 8 * i;
+      this.particles.push({
+        x, y, vx: cos(a) * 40, vy: sin(a) * 40 - 50,
+        life: 0.6, maxLife: 0.6, r: rand(2, 5),
+        col: "#4caf50", grav: -100, fade: true, blend: "lighter",
+      });
+    }
+  }
+
+  /* ── LEVEL UP BURST ── */
+  addLevelUpBurst(x, y) {
+    for (let i = 0; i < 30; i++) {
+      const a = rand(0, TAU);
+      const spd = rand(150, 350);
+      this.particles.push({
+        x, y, vx: cos(a) * spd, vy: sin(a) * spd,
+        life: rand(0.8, 1.5), maxLife: 1.5, r: rand(3, 10),
+        col: rand(0, 1) > 0.5 ? "#ffd700" : "#ff9800",
+        grav: rand(-30, 30), fade: true, blend: "lighter",
+      });
+    }
+    this.shake(15, 0.7);
+  }
+
+  /* ── BOSS WARNING ── */
+  addBossWarning() {
+    this.shake(20, 0.5);
+    for (let i = 0; i < 15; i++) {
+      this.particles.push({
+        x: rand(0, 4000), y: rand(0, 4000),
+        vx: rand(-20, 20), vy: rand(-20, 20),
+        life: rand(1, 2), maxLife: 2, r: rand(10, 25),
+        col: "#f44336", grav: 0, fade: true, blend: "lighter",
+        isBossWarning: true,
+      });
+    }
+  }
+
+  /* ── CRITICAL HIT ── */
+  addCritEffect(x, y) {
+    for (let i = 0; i < 12; i++) {
+      const a = rand(0, TAU);
+      const spd = rand(80, 150);
+      this.particles.push({
+        x, y, vx: cos(a) * spd, vy: sin(a) * spd,
+        life: 0.5, maxLife: 0.5, r: rand(2, 5),
+        col: "#ff1744", grav: -150, fade: true, blend: "lighter",
+      });
+    }
+    this.shake(8, 0.8);
+  }
+
   /* ── UPDATE ALL ── */
   update(dt) {
     this.updateShake();
@@ -5774,11 +5852,36 @@ class Game {
     {
       const sx = toX(this.p.x), sy = toY(this.p.y); c.save();
 
+      // Character-specific aura
+      const charAuras = {
+        exorcist: { col: "#ef5350", blur: 18 },
+        shaman: { col: "#ab47bc", blur: 20 },
+        taoist: "#42a5f5",
+        hunter: "#66bb6a",
+        monk: "#ff9800",
+        foxSpirit: "#ec407a",
+      };
+      const aura = charAuras[this.selectedChar] || { col: "#ffd54f", blur: 16 };
+      const auraColor = typeof aura === "string" ? aura : aura.col;
+      const auraBlur = typeof aura === "object" ? aura.blur : 14;
+
+      // Draw ambient aura ring around player
+      if (this.elapsed > 0.5) {
+        c.save();
+        c.globalAlpha = 0.15 + sin(this.elapsed * 2) * 0.08;
+        c.strokeStyle = auraColor;
+        c.lineWidth = 2;
+        c.shadowColor = auraColor;
+        c.shadowBlur = auraBlur;
+        c.beginPath(); c.arc(sx, sy, this.p.r + 8 + sin(this.elapsed * 3) * 2, 0, TAU); c.stroke();
+        c.restore();
+      }
+
       // Glow effect when invincible or active power-ups
       if (this.p.invT > 0 || this.activePowerups.inv) {
         c.shadowColor = "#e040fb"; c.shadowBlur = 25;
       } else {
-        c.shadowColor = "#ffd54f"; c.shadowBlur = 16;
+        c.shadowColor = auraColor; c.shadowBlur = auraBlur;
       }
 
       c.beginPath(); c.arc(sx, sy, this.p.r, 0, TAU);
