@@ -6264,55 +6264,10 @@ class Game {
         c.shadowColor = auraColor; c.shadowBlur = auraBlur;
       }
 
-      // Character-specific base shapes
-      const charShapes = {
-        exorcist: "circle",
-        shaman: "diamond",
-        taoist: "hexagon",
-        hunter: "triangle",
-        monk: "square",
-        foxSpirit: "star",
-      };
-      const shape = charShapes[this.selectedChar] || "circle";
+      // Draw player as simple circle (original rendering)
       const flash = this.p.flashT > 0, blink = this.p.invT > 0 && floor(this.p.invT * 12) % 2 === 0;
-      const baseColor = flash ? "#ff5252" : blink ? "rgba(255,213,79,.4)" : "#fafafa";
-
-      // Draw character with unique shape
-      c.beginPath();
-      if (shape === "circle") {
-        c.arc(sx, sy, this.p.r, 0, TAU);
-      } else if (shape === "diamond") {
-        c.moveTo(sx, sy - this.p.r);
-        c.lineTo(sx + this.p.r, sy);
-        c.lineTo(sx, sy + this.p.r);
-        c.lineTo(sx - this.p.r, sy);
-        c.closePath();
-      } else if (shape === "hexagon") {
-        for (let i = 0; i < 6; i++) {
-          const a = (i * TAU / 6) - PI / 2;
-          const px = sx + cos(a) * this.p.r;
-          const py = sy + sin(a) * this.p.r;
-          if (i === 0) c.moveTo(px, py); else c.lineTo(px, py);
-        }
-        c.closePath();
-      } else if (shape === "triangle") {
-        c.moveTo(sx, sy - this.p.r);
-        c.lineTo(sx + this.p.r * 0.9, sy + this.p.r * 0.8);
-        c.lineTo(sx - this.p.r * 0.9, sy + this.p.r * 0.8);
-        c.closePath();
-      } else if (shape === "square") {
-        c.rect(sx - this.p.r * 0.8, sy - this.p.r * 0.8, this.p.r * 1.6, this.p.r * 1.6);
-      } else if (shape === "star") {
-        for (let i = 0; i < 8; i++) {
-          const a = (i * TAU / 8) - PI / 2;
-          const r = i % 2 === 0 ? this.p.r : this.p.r * 0.5;
-          const px = sx + cos(a) * r;
-          const py = sy + sin(a) * r;
-          if (i === 0) c.moveTo(px, py); else c.lineTo(px, py);
-        }
-        c.closePath();
-      }
-      c.fillStyle = baseColor; c.fill();
+      c.beginPath(); c.arc(sx, sy, this.p.r, 0, TAU);
+      c.fillStyle = flash ? "#ff5252" : blink ? "rgba(255,213,79,.4)" : "#fafafa"; c.fill();
 
       // Character-specific visual details
       if (!flash && !blink) {
