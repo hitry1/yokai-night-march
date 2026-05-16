@@ -903,9 +903,11 @@ body::before {
 }
 .boss-hp-wrap.hidden { display: none; }
 @keyframes bossBarSlide { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
-.boss-hp-label { font-size: .8rem; font-weight: 700; color: #f06292; text-shadow: 0 0 8px rgba(240,98,146,0.5); }
+.boss-hp-label { font-size: .8rem; font-weight: 700; color: #f06292; text-shadow: 0 0 8px rgba(240,98,146,0.5); animation: bossLabelPulse 1s ease-in-out infinite; }
+@keyframes bossLabelPulse { 0%, 100% { text-shadow: 0 0 8px rgba(240,98,146,0.5); } 50% { text-shadow: 0 0 15px rgba(240,98,146,0.8); } }
 #boss-hp-bar-wrap { flex: 1; max-width: 200px; }
-#boss-hp-bar { background: linear-gradient(90deg, #f06292, #e91e63); width: 100%; box-shadow: 0 0 10px rgba(233,30,99,0.5); }
+#boss-hp-bar { background: linear-gradient(90deg, #f06292, #e91e63); width: 100%; box-shadow: 0 0 10px rgba(233,30,99,0.5); animation: bossHpGlow 2s ease-in-out infinite; }
+@keyframes bossHpGlow { 0%, 100% { box-shadow: 0 0 10px rgba(233,30,99,0.5); } 50% { box-shadow: 0 0 20px rgba(233,30,99,0.8); } }
 
 .wslot {
   width: 44px; height: 44px; border-radius: 12px;
