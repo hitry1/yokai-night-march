@@ -1689,7 +1689,7 @@ class Game {
       pause: $("screen-pause"), end: $("screen-end"),
       charSelect: $("screen-chars"), petScreen: $("screen-pet"), shop: $("screen-shop"), settings: $("screen-settings"),
       achievements: $("screen-achievements"), daily: $("screen-daily"),
-      leaderboard: $("screen-leaderboard"),
+      leaderboard: $("screen-leaderboard"), codexScreen: $("screen-codex"),
       stageScreen: $("screen-stages"), stageClearScreen: $("screen-stage-clear"), gachaScreen: $("screen-gacha"),
       dailyChallenge: $("daily-challenge"), dailyBest: $("daily-best"),
       artifactScreen: $("screen-artifact"),
@@ -1705,8 +1705,14 @@ class Game {
       shopList: $("shop-list"), shopGold: $("shop-gold"),
       achievementList: $("achievement-list"), achievementProgress: $("achievement-progress"),
       goldEarned: $("gold-earned"), announceBar: $("announce-bar"),
-      comboDisplay: $("combo-display"),
+      comboDisplay: $("combo-display"), codexList: $("codex-list"),
     };
+
+    /* codex tabs */
+    $("tab-char").onclick = () => this._showCodexTab("char");
+    $("tab-enemy").onclick = () => this._showCodexTab("enemy");
+    $("tab-weapon").onclick = () => this._showCodexTab("weapon");
+    $("btn-back-codex").onclick = () => { this.ui.codexScreen.classList.add("hidden"); this.ui.menu.classList.remove("hidden"); };
 
     /* menu buttons */
     $("btn-play").onclick = () => this._showStageSelect();
@@ -1714,6 +1720,7 @@ class Game {
     $("btn-achievements").onclick = () => this._showAchievements();
     $("btn-daily").onclick = () => this._showDaily();
     $("btn-leaderboard").onclick = () => this._showLeaderboard();
+    $("btn-codex").onclick = () => this._showCodex();
     $("btn-settings").onclick = () => this._showSettings();
 
     /* pet select buttons */
@@ -1868,7 +1875,7 @@ class Game {
   /* ── SCREEN NAVIGATION ── */
   _hideAll() {
     const screens = [this.ui.menu, this.ui.charSelect, this.ui.petScreen, this.ui.shop, this.ui.settings,
-      this.ui.achievements, this.ui.daily, this.ui.leaderboard, this.ui.hud, this.ui.lvl, this.ui.pause, this.ui.end, this.ui.artifactScreen,
+      this.ui.achievements, this.ui.daily, this.ui.leaderboard, this.ui.codexScreen, this.ui.hud, this.ui.lvl, this.ui.pause, this.ui.end, this.ui.artifactScreen,
       this.ui.stageScreen, this.ui.stageClearScreen, this.ui.gachaScreen];
     for (const s of screens) if (s) s.classList.add("hidden");
     if (this.ui.joyZone) this.ui.joyZone.classList.add("hidden");
@@ -2394,6 +2401,67 @@ class Game {
 
     // Load default (normal) leaderboard
     this._loadLeaderboard("normal");
+  }
+
+  /* ── CODEX (도감) ── */
+  _showCodex() {
+    this._hideAll();
+    this.state = "codex";
+    this.ui.codexScreen.classList.remove("hidden");
+    this._showCodexTab("char");
+  }
+
+  _showCodexTab(tab) {
+    // Update tab states
+    document.querySelectorAll(".codex-tabs .tab-btn").forEach(t => t.classList.remove("active"));
+    document.getElementById("tab-" + tab)?.classList.add("active");
+
+    const box = this.ui.codexList;
+    box.innerHTML = "";
+
+    if (tab === "char") {
+      // Character Codex
+      for (const [id, ch] of Object.entries(CHARACTERS)) {
+        const isUnlocked = this.unlocks.characters.includes(id);
+        const card = document.createElement("div");
+        card.className = "codex-card" + (isUnlocked ? "" : " locked");
+        const wpn = WDEFS[ch.startWeapon];
+        card.innerHTML = `
+          <div class="codex-icon">${isUnlocked ? ch.icon : "🔒"}</div>
+          <div class="codex-name">${ch.name}</div>
+          <div class="codex-desc">${isUnlocked ? ch.desc : "잠겨 있음"}</div>
+          <div class="codex-stats">HP: ${ch.hp} | SPD: ${(ch.spd/2.8*100).toFixed(0)}%</div>
+        `;
+        box.appendChild(card);
+      }
+    } else if (tab === "enemy") {
+      // Enemy Codex - show all enemies encountered or all
+      for (const [id, e] of Object.entries(ETYPES)) {
+        const card = document.createElement("div");
+        card.className = "codex-card";
+        const typeLabel = e.boss ? "👑 보스" : (e.elite ? "⭐ 엘리트" : "👹");
+        card.innerHTML = `
+          <div class="codex-icon" style="color:${e.col}">${e.col.startsWith("#") ? "●" : "👹"}</div>
+          <div class="codex-name">${e.name}</div>
+          <div class="codex-desc">${typeLabel}</div>
+          <div class="codex-stats">HP: ${e.hp} | SPD: ${(e.spd*100).toFixed(0)}%</div>
+        `;
+        box.appendChild(card);
+      }
+    } else if (tab === "weapon") {
+      // Weapon Codex
+      for (const [id, w] of Object.entries(WDEFS)) {
+        const card = document.createElement("div");
+        card.className = "codex-card";
+        card.innerHTML = `
+          <div class="codex-icon">${w.icon}</div>
+          <div class="codex-name">${w.name}</div>
+          <div class="codex-desc">${w.desc}</div>
+          <div class="codex-stats">DMG: ${w.dmg} | CD: ${w.cd}ms</div>
+        `;
+        box.appendChild(card);
+      }
+    }
   }
 
   async _loadLeaderboard(difficulty) {

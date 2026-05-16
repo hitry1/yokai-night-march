@@ -483,6 +483,25 @@ body::before {
 .leaderboard-score { font-size: 1rem; color: #ffd93d; font-weight: 700; }
 .leaderboard-loading { text-align: center; color: rgba(255,255,255,.5); padding: 20px; }
 
+/* ── CODEX (도감) ── */
+.codex-tabs { display: flex; gap: 8px; margin-bottom: 16px; justify-content: center; }
+.codex-list {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 12px; max-height: 400px; overflow-y: auto; padding: 8px;
+}
+.codex-card {
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  padding: 16px 12px; border-radius: 12px;
+  background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08);
+  text-align: center; transition: background .2s, transform .2s;
+}
+.codex-card:hover { background: rgba(255,255,255,.08); transform: translateY(-2px); }
+.codex-card.locked { opacity: .5; filter: grayscale(1); }
+.codex-icon { font-size: 2.2rem; margin-bottom: 4px; }
+.codex-name { font-size: .85rem; color: #fff; font-weight: 600; }
+.codex-desc { font-size: .7rem; color: rgba(255,255,255,.5); line-height: 1.3; }
+.codex-stats { font-size: .7rem; color: #7dd3fc; margin-top: 4px; }
+
 /* ── STAGE SELECTION ── */
 #screen-stages::before {
   content: '';

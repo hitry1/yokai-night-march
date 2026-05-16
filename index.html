@@ -86,6 +86,7 @@
         <button id="btn-gacha" class="btn btn-secondary">🎰 유령 가챠</button>
         <button id="btn-achievements" class="btn btn-secondary">🏆 업적</button>
         <button id="btn-leaderboard" class="btn btn-secondary">📊 리더보드</button>
+        <button id="btn-codex" class="btn btn-secondary">📖 도감</button>
         <button id="btn-settings" class="btn btn-secondary">⚙️ 설정</button>
       </div>
       <p class="hint">이동: WASD / 방향키 / 터치 | 무기 자동 공격 | 일시정지: ESC</p>
@@ -138,6 +139,20 @@
       <div id="leaderboard-list" class="leaderboard-list"></div>
       <div id="leaderboard-loading" class="leaderboard-loading hidden"> loading...</div>
       <button id="btn-back-leaderboard" class="btn btn-secondary">← 돌아가기</button>
+    </div>
+  </div>
+
+  <!-- Codex Screen -->
+  <div id="screen-codex" class="ov hidden">
+    <div class="ov-box wide-box">
+      <h2 class="screen-title">📖 도감</h2>
+      <div class="codex-tabs">
+        <button id="tab-char" class="tab-btn active">👤 캐릭터</button>
+        <button id="tab-enemy" class="tab-btn">👹 적</button>
+        <button id="tab-weapon" class="tab-btn">⚔️ 무기</button>
+      </div>
+      <div id="codex-list" class="codex-list"></div>
+      <button id="btn-back-codex" class="btn btn-secondary">← 돌아가기</button>
     </div>
   </div>
 
