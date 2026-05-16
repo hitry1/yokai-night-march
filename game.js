@@ -5427,6 +5427,176 @@ class Game {
         c.arc(sx - 6, sy - 4, 3.5, 0, TAU); c.arc(sx + 6, sy - 4, 3.5, 0, TAU); c.fill();
         c.fillStyle = "#d32f2f"; c.beginPath();
         c.arc(sx - 6, sy - 4, 2, 0, TAU); c.arc(sx + 6, sy - 4, 2, 0, TAU); c.fill();
+      } else if (e.type === "goblin") {
+        /* 고블린: small green creature with big ears */
+        c.fillStyle = hf ? "#fff" : e.col;
+        c.beginPath(); c.arc(sx, sy, e.r, 0, TAU); c.fill();
+        if (!hf) {
+          c.fillStyle = "#5d4037";
+          c.beginPath(); c.ellipse(sx - e.r * 0.7, sy - e.r * 0.3, e.r * 0.3, e.r * 0.4, -0.3, 0, TAU); c.fill();
+          c.beginPath(); c.ellipse(sx + e.r * 0.7, sy - e.r * 0.3, e.r * 0.3, e.r * 0.4, 0.3, 0, TAU); c.fill();
+        }
+        c.fillStyle = hf ? "#ccc" : "#ff5722";
+        c.beginPath(); c.arc(sx - 3, sy - 2, 2, 0, TAU); c.arc(sx + 3, sy - 2, 2, 0, TAU); c.fill();
+      } else if (e.type === "wetGhost") {
+        /* 물귀신: dripping water effect */
+        c.fillStyle = hf ? "#fff" : e.col;
+        c.beginPath(); c.arc(sx, sy, e.r, 0, TAU); c.fill();
+        if (!hf) {
+          c.fillStyle = "#4dd0e1";
+          c.beginPath(); c.moveTo(sx - 5, sy); c.quadraticCurveTo(sx - 8, sy + 10, sx - 4, sy + 15); c.lineTo(sx - 2, sy + 5); c.fill();
+          c.beginPath(); c.moveTo(sx + 3, sy + 3); c.quadraticCurveTo(sx + 6, sy + 12, sx + 2, sy + 18); c.lineTo(sx, sy + 8); c.fill();
+        }
+      } else if (e.type === "fireEnt") {
+        /* 불꽃정령: flaming body */
+        c.fillStyle = hf ? "#fff" : e.col;
+        c.shadowColor = "#ff5722"; c.shadowBlur = 15;
+        c.beginPath(); c.arc(sx, sy, e.r, 0, TAU); c.fill();
+        if (!hf) {
+          c.fillStyle = "#ffeb3b";
+          c.beginPath(); c.moveTo(sx - 6, sy - e.r * 0.5); c.lineTo(sx, sy - e.r - 12); c.lineTo(sx + 6, sy - e.r * 0.5); c.fill();
+        }
+      } else if (e.type === "tombKeeper") {
+        /* 무덤지기: hooded cloaked figure */
+        c.fillStyle = hf ? "#fff" : e.col;
+        c.beginPath(); c.arc(sx, sy, e.r, 0, TAU); c.fill();
+        if (!hf) {
+          c.fillStyle = "#263238";
+          c.beginPath(); c.ellipse(sx, sy - e.r * 0.3, e.r * 0.7, e.r * 0.5, 0, PI, 0); c.fill();
+          c.fillStyle = "#4db6ac";
+          c.beginPath(); c.arc(sx - 4, sy - e.r * 0.2, 2, 0, TAU); c.arc(sx + 4, sy - e.r * 0.2, 2, 0, TAU); c.fill();
+        }
+      } else if (e.type === "plagueRat") {
+        /* 역병쥐: rat with disease marks */
+        c.fillStyle = hf ? "#fff" : e.col;
+        c.beginPath(); c.ellipse(sx, sy, e.r * 1.2, e.r * 0.8, 0, 0, TAU); c.fill();
+        if (!hf) {
+          c.fillStyle = "#827717";
+          c.beginPath(); c.ellipse(sx - e.r * 0.6, sy - e.r * 0.3, 4, 5, -0.5, 0, TAU); c.fill();
+          c.beginPath(); c.ellipse(sx + e.r * 0.6, sy - e.r * 0.3, 4, 5, 0.5, 0, TAU); c.fill();
+        }
+        c.fillStyle = hf ? "#ccc" : "#c62828";
+        c.beginPath(); c.arc(sx - 3, sy - 1, 1.5, 0, TAU); c.arc(sx + 3, sy - 1, 1.5, 0, TAU); c.fill();
+      } else if (e.type === "demonKnight") {
+        /* 악마기사: armored knight */
+        c.fillStyle = hf ? "#fff" : e.col;
+        c.beginPath(); c.arc(sx, sy, e.r, 0, TAU); c.fill();
+        if (!hf) {
+          c.strokeStyle = "#b71c1c"; c.lineWidth = 2;
+          c.beginPath(); c.moveTo(sx - e.r * 0.5, sy - e.r * 0.5); c.lineTo(sx + e.r * 0.5, sy + e.r * 0.5); c.stroke();
+          c.beginPath(); c.moveTo(sx + e.r * 0.5, sy - e.r * 0.5); c.lineTo(sx - e.r * 0.5, sy + e.r * 0.5); c.stroke();
+          c.beginPath(); c.arc(sx, sy, e.r * 0.5, 0, TAU); c.stroke();
+        }
+        c.fillStyle = "#212121";
+        c.beginPath(); c.arc(sx, sy - e.r * 0.15, e.r * 0.3, PI, 0); c.fill();
+        c.fillStyle = hf ? "#fff" : "#c62828";
+        c.beginPath(); c.arc(sx, sy - e.r * 0.1, e.r * 0.12, 0, TAU); c.fill();
+      } else if (e.type === "soulSiphon") {
+        /* 영혼흡수자: floating ethereal figure */
+        c.fillStyle = hf ? "#fff" : e.col;
+        c.shadowColor = "#ab47bc"; c.shadowBlur = 12;
+        c.beginPath(); c.arc(sx, sy, e.r * 0.8, 0, TAU); c.fill();
+        if (!hf) {
+          c.fillStyle = "#7b1fa2";
+          c.beginPath(); c.moveTo(sx, sy - e.r); c.lineTo(sx - 8, sy + e.r * 0.3); c.lineTo(sx + 8, sy + e.r * 0.3); c.fill();
+        }
+        c.fillStyle = "#e1bee7";
+        c.beginPath(); c.arc(sx - 3, sy - 2, 2, 0, TAU); c.arc(sx + 3, sy - 2, 2, 0, TAU); c.fill();
+      } else if (e.type === "iceGolem") {
+        /* 얼음골렘: crystalline golem */
+        c.fillStyle = hf ? "#fff" : e.col;
+        c.shadowColor = "#81d4fa"; c.shadowBlur = 10;
+        c.beginPath(); c.arc(sx, sy, e.r, 0, TAU); c.fill();
+        if (!hf) {
+          c.strokeStyle = "#b3e5fc"; c.lineWidth = 2;
+          for (let i = 0; i < 6; i++) {
+            const ang = TAU / 6 * i + this.elapsed;
+            c.beginPath();
+            c.moveTo(sx, sy);
+            c.lineTo(sx + cos(ang) * e.r * 0.7, sy + sin(ang) * e.r * 0.7);
+            c.stroke();
+          }
+        }
+        c.fillStyle = "#e3f2fd";
+        c.beginPath(); c.arc(sx - 5, sy - 3, 3, 0, TAU); c.arc(sx + 5, sy - 3, 3, 0, TAU); c.fill();
+      } else if (e.type === "ghostKing") {
+        /* 귀왕: ghost king with crown */
+        c.fillStyle = hf ? "#fff" : e.col;
+        c.shadowColor = "#7b1fa2"; c.shadowBlur = 15;
+        c.beginPath(); c.arc(sx, sy, e.r, 0, TAU); c.fill();
+        if (!hf) {
+          c.fillStyle = "#ffd700";
+          c.beginPath(); c.moveTo(sx - 10, sy - e.r); c.lineTo(sx - 7, sy - e.r - 8); c.lineTo(sx - 4, sy - e.r); c.lineTo(sx, sy - e.r - 10); c.lineTo(sx + 4, sy - e.r); c.lineTo(sx + 7, sy - e.r - 8); c.lineTo(sx + 10, sy - e.r); c.fill();
+        }
+        c.fillStyle = "#212121";
+        c.beginPath(); c.arc(sx - 4, sy - 2, 2.5, 0, TAU); c.arc(sx + 4, sy - 2, 2.5, 0, TAU); c.fill();
+      } else if (e.type === "kappa") {
+        /* 카파: turtle-like water creature */
+        c.fillStyle = hf ? "#fff" : e.col;
+        c.beginPath(); c.arc(sx, sy, e.r, 0, TAU); c.fill();
+        if (!hf) {
+          c.fillStyle = "#558b2f";
+          c.beginPath(); c.ellipse(sx, sy - e.r * 0.5, e.r * 0.6, e.r * 0.4, 0, 0, TAU); c.fill();
+        }
+        c.fillStyle = hf ? "#ccc" : "#fff";
+        c.beginPath(); c.arc(sx - 4, sy - 1, 2.5, 0, TAU); c.arc(sx + 4, sy - 1, 2.5, 0, TAU); c.fill();
+        c.fillStyle = "#1a1a2e";
+        c.beginPath(); c.arc(sx - 4, sy - 1, 1, 0, TAU); c.arc(sx + 4, sy - 1, 1, 0, TAU); c.fill();
+      } else if (e.type === "oni") {
+        /* 오니: demon with horns */
+        c.fillStyle = hf ? "#fff" : e.col;
+        c.shadowColor = "#d32f2f"; c.shadowBlur = 8;
+        c.beginPath(); c.arc(sx, sy, e.r, 0, TAU); c.fill();
+        if (!hf) {
+          c.fillStyle = "#37474f";
+          c.beginPath(); c.moveTo(sx - 5, sy - e.r); c.lineTo(sx - 8, sy - e.r - 12); c.lineTo(sx - 2, sy - e.r); c.fill();
+          c.beginPath(); c.moveTo(sx + 5, sy - e.r); c.lineTo(sx + 8, sy - e.r - 12); c.lineTo(sx + 2, sy - e.r); c.fill();
+        }
+        c.fillStyle = "#ff1744";
+        c.beginPath(); c.arc(sx - 5, sy, 2.5, 0, TAU); c.arc(sx + 5, sy, 2.5, 0, TAU); c.fill();
+        c.fillStyle = "#1a1a2e";
+        c.beginPath(); c.moveTo(sx - 6, sy + 3); c.lineTo(sx - 2, sy + 5); c.lineTo(sx + 2, sy + 5); c.lineTo(sx + 6, sy + 3); c.lineTo(sx + 2, sy + 7); c.lineTo(sx - 2, sy + 7); c.closePath(); c.fill();
+      } else if (e.type === "snakeSpirit") {
+        /* 뱀정: snake-like spirit */
+        c.fillStyle = hf ? "#fff" : e.col;
+        c.shadowColor = "#7cb342"; c.shadowBlur = 10;
+        c.beginPath(); c.ellipse(sx, sy, e.r * 1.3, e.r * 0.7, 0, 0, TAU); c.fill();
+        if (!hf) {
+          c.fillStyle = "#ffeb3b";
+          c.beginPath(); c.arc(sx + e.r * 0.5, sy - e.r * 0.3, 3, 0, TAU); c.fill();
+        }
+        c.fillStyle = "#1a1a2e";
+        c.beginPath(); c.arc(sx - 4, sy, 1.5, 0, TAU); c.arc(sx + 4, sy, 1.5, 0, TAU); c.fill();
+      } else if (e.type === "crowTsukuyomi") {
+        /* 달乌鸦: crow with wings */
+        c.fillStyle = hf ? "#fff" : e.col;
+        c.beginPath(); c.arc(sx, sy, e.r, 0, TAU); c.fill();
+        if (!hf) {
+          c.fillStyle = "#37474f";
+          c.beginPath(); c.ellipse(sx - e.r * 0.7, sy - e.r * 0.2, e.r * 0.5, e.r * 0.3, -0.5, 0, TAU); c.fill();
+          c.beginPath(); c.ellipse(sx + e.r * 0.7, sy - e.r * 0.2, e.r * 0.5, e.r * 0.3, 0.5, 0, TAU); c.fill();
+        }
+        c.fillStyle = "#ff6f00";
+        c.beginPath(); c.arc(sx - 3, sy, 2, 0, TAU); c.arc(sx + 3, sy, 2, 0, TAU); c.fill();
+      } else if (e.type === "yokaiLord") {
+        /* 요괴왕: ultimate boss */
+        c.fillStyle = hf ? "#fff" : e.col;
+        c.shadowColor = "#7c4dff"; c.shadowBlur = 25;
+        c.beginPath(); c.arc(sx, sy, e.r, 0, TAU); c.fill();
+        if (!hf) {
+          c.strokeStyle = "#ffd700"; c.lineWidth = 3;
+          c.beginPath(); c.arc(sx, sy, e.r * 0.8, 0, TAU); c.stroke();
+          c.beginPath(); c.arc(sx, sy, e.r * 0.5, 0, TAU); c.stroke();
+          c.fillStyle = "#ffd700";
+          for (let i = 0; i < 5; i++) {
+            const ang = TAU / 5 * i - PI / 2;
+            c.beginPath(); c.moveTo(sx + cos(ang) * e.r, sy + sin(ang) * e.r); c.lineTo(sx + cos(ang) * (e.r + 8), sy + sin(ang) * (e.r + 8)); c.stroke();
+          }
+        }
+        c.fillStyle = "#fff";
+        c.beginPath(); c.arc(sx - 6, sy - 3, 4, 0, TAU); c.arc(sx + 6, sy - 3, 4, 0, TAU); c.fill();
+        c.fillStyle = "#d50000";
+        c.beginPath(); c.arc(sx - 6, sy - 3, 2, 0, TAU); c.arc(sx + 6, sy - 3, 2, 0, TAU); c.fill();
       } else {
         /* 도깨비, 해골 etc */
         c.beginPath(); c.arc(sx, sy, e.r, 0, TAU);
