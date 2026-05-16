@@ -278,6 +278,14 @@ class Sfx {
   chest() { this._t(0.15, 600, 1400, "sine", 0.15); setTimeout(() => this._t(0.15, 800, 1600, "sine", 0.12), 100); }
   announce() { this._t(0.12, 500, 700, "triangle", 0.08); }
   knockback() { this._n(0.06, 400, 0.1); }
+  powerup() { this._t(0.2, 400, 1200, "sine", 0.15); setTimeout(() => this._t(0.2, 600, 1400, "sine", 0.12), 100); }
+  levelup() { this._t(0.15, 500, 1500, "sine", 0.18); setTimeout(() => this._t(0.15, 700, 1800, "sine", 0.15), 150); setTimeout(() => this._t(0.2, 900, 2000, "sine", 0.12), 300); }
+  heal() { this._t(0.1, 800, 1200, "sine", 0.08); setTimeout(() => this._t(0.1, 1000, 1400, "sine", 0.06), 80); }
+  shield() { this._t(0.15, 300, 600, "triangle", 0.12); }
+  crit() { this._t(0.1, 1500, 2500, "square", 0.1); }
+  pickup() { this._t(0.06, 1000, 1500, "sine", 0.07); }
+  revive() { this._t(0.3, 300, 800, "sine", 0.15); setTimeout(() => this._t(0.3, 500, 1200, "sine", 0.12), 150); setTimeout(() => this._t(0.4, 700, 1600, "sine", 0.1), 300); }
+  combo() { this._t(0.08, 800, 1400, "triangle", 0.1); setTimeout(() => this._t(0.08, 1200, 1800, "triangle", 0.08), 80); }
   wpn(t) {
     if (t === "blade" || t === "ghostSlash") this._t(0.04, 320, 200, "sawtooth", 0.06);
     else if (t === "fire" || t === "ghostFlame") this._n(0.06, 1100, 0.08);
@@ -364,6 +372,224 @@ class Sfx {
   bgmSetVolume(v) {
     this.bgmVol = v;
     if (this.bgmAudio) this.bgmAudio.volume = v * 0.5;
+  }
+}
+
+/* ─── VISUAL EFFECTS SYSTEM ─── */
+class VFX {
+  constructor() {
+    this.particles = [];
+    this.damageNumbers = [];
+    this.screenShake = { x: 0, y: 0, intensity: 0, decay: 0.9 };
+    this.hitSparks = [];
+    this.pickups = [];
+    this.weaponTrails = [];
+    this.bloodSplats = [];
+  }
+
+  reset() {
+    this.particles = [];
+    this.damageNumbers = [];
+    this.hitSparks = [];
+    this.pickups = [];
+    this.weaponTrails = [];
+    this.bloodSplats = [];
+    this.screenShake = { x: 0, y: 0, intensity: 0, decay: 0.9 };
+  }
+
+  /* ── SCREEN SHAKE ── */
+  shake(intensity = 10, decay = 0.85) {
+    this.screenShake.intensity = max(this.screenShake.intensity, intensity);
+    this.screenShake.decay = decay;
+  }
+
+  updateShake() {
+    if (this.screenShake.intensity > 0.1) {
+      this.screenShake.x = rand(-1, 1) * this.screenShake.intensity;
+      this.screenShake.y = rand(-1, 1) * this.screenShake.intensity;
+      this.screenShake.intensity *= this.screenShake.decay;
+    } else {
+      this.screenShake.x = 0;
+      this.screenShake.y = 0;
+      this.screenShake.intensity = 0;
+    }
+  }
+
+  /* ── DAMAGE NUMBERS ── */
+  addDamage(x, y, dmg, isCrit = false, isKill = false) {
+    this.damageNumbers.push({
+      x, y,
+      dmg: floor(dmg),
+      isCrit,
+      isKill,
+      life: 1.2,
+      maxLife: 1.2,
+      vy: isCrit ? -90 : -60,
+      vx: rand(-20, 20),
+      scale: isCrit ? 1.5 : 1,
+      rotation: rand(-0.2, 0.2),
+    });
+  }
+
+  updateDamageNumbers(dt) {
+    for (const d of this.damageNumbers) {
+      d.life -= dt;
+      d.y += d.vy * dt;
+      d.x += d.vx * dt;
+      d.vy *= 0.98;
+      d.vx *= 0.95;
+    }
+    this.damageNumbers = this.damageNumbers.filter(d => d.life > 0);
+  }
+
+  /* ── PARTICLES ── */
+  addParticle(x, y, config) {
+    const p = {
+      x, y,
+      vx: config.vx || rand(-50, 50),
+      vy: config.vy || rand(-50, 50),
+      life: config.life || 1,
+      maxLife: config.life || 1,
+      r: config.r || rand(2, 5),
+      col: config.col || "#fff",
+      grav: config.grav || 0,
+      fade: config.fade !== false,
+      blend: config.blend || "source-over",
+      count: config.count || 1,
+    };
+    for (let i = 0; i < p.count; i++) {
+      this.particles.push({
+        ...p,
+        vx: (config.vx || rand(-50, 50)) + rand(-20, 20),
+        vy: (config.vy || rand(-50, 50)) + rand(-20, 20),
+      });
+    }
+  }
+
+  updateParticles(dt) {
+    for (const p of this.particles) {
+      p.life -= dt;
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      p.vy += p.grav * dt;
+      p.vx *= 0.99;
+    }
+    this.particles = this.particles.filter(p => p.life > 0);
+  }
+
+  /* ── HIT SPARKS ── */
+  addHitSpark(x, y, color = "#fff", count = 5) {
+    for (let i = 0; i < count; i++) {
+      const a = rand(0, TAU);
+      const spd = rand(80, 200);
+      this.hitSparks.push({
+        x, y,
+        vx: cos(a) * spd,
+        vy: sin(a) * spd,
+        life: rand(0.15, 0.35),
+        maxLife: 0.35,
+        r: rand(1, 3),
+        col: color,
+      });
+    }
+  }
+
+  updateHitSparks(dt) {
+    for (const s of this.hitSparks) {
+      s.life -= dt;
+      s.x += s.vx * dt;
+      s.y += s.vy * dt;
+      s.vx *= 0.95;
+      s.vy *= 0.95;
+    }
+    this.hitSparks = this.hitSparks.filter(s => s.life > 0);
+  }
+
+  /* ── PICKUPS ── */
+  addPickup(x, y, type, value) {
+    this.pickups.push({
+      x, y,
+      type, // "gold" or "xp"
+      value,
+      life: 2,
+      maxLife: 2,
+      startY: y,
+      hover: 0,
+    });
+  }
+
+  updatePickups(dt) {
+    for (const p of this.pickups) {
+      p.life -= dt;
+      p.hover += dt * 3;
+    }
+    this.pickups = this.pickups.filter(p => p.life > 0);
+  }
+
+  /* ── WEAPON TRAILS ── */
+  addWeaponTrail(x, y, weaponType, angle) {
+    const colors = {
+      blade: "#b0bec5",
+      fire: "#ff9800",
+      ghostFlame: "#ff6d00",
+      lightning: "#00e5ff",
+      thunderIce: "#80deea",
+      frost: "#80deea",
+      curseMist: "#9c27b0",
+      aura: "#ce93d8",
+      beads: "#ffd54f",
+      divineWind: "#81c784",
+      windSpirit: "#b0bec5",
+      scythe: "#90a4ae",
+      deathQuake: "#78909c",
+      quake: "#8d6e63",
+      trident: "#4fc3f7",
+      tidalStorm: "#29b6f6",
+    };
+    this.weaponTrails.push({
+      x, y,
+      angle,
+      weaponType,
+      col: colors[weaponType] || "#fff",
+      life: 0.3,
+      maxLife: 0.3,
+      len: rand(20, 40),
+    });
+  }
+
+  updateWeaponTrails(dt) {
+    for (const t of this.weaponTrails) {
+      t.life -= dt;
+    }
+    this.weaponTrails = this.weaponTrails.filter(t => t.life > 0);
+  }
+
+  /* ── BLOOD SPLAT ── */
+  addBloodSplat(x, y, size = 1) {
+    this.bloodSplats.push({
+      x, y,
+      size,
+      life: 3,
+      maxLife: 3,
+    });
+  }
+
+  updateBloodSplats(dt) {
+    for (const b of this.bloodSplats) {
+      b.life -= dt;
+    }
+    this.bloodSplats = this.bloodSplats.filter(b => b.life > 0);
+  }
+
+  /* ── UPDATE ALL ── */
+  update(dt) {
+    this.updateShake();
+    this.updateDamageNumbers(dt);
+    this.updateParticles(dt);
+    this.updateHitSparks(dt);
+    this.updatePickups(dt);
+    this.updateWeaponTrails(dt);
+    this.updateBloodSplats(dt);
   }
 }
 
@@ -461,43 +687,42 @@ const CHARACTERS = {
   },
 };
 
-/* ─── ENEMY DEFINITIONS ─── */
+/* ─── NEW ENEMIES (Expansion) ─── */
 const ETYPES = {
   // 기본 적들 (1-2 스테이지)
   dokkaebi:  { name: "도깨비",   hp: 25,  spd: 1.0, r: 13, col: "#e65100", xp: 1,  dmg: 10, goldMin: 0, goldMax: 1 },
   wisp:      { name: "쥐불",     hp: 12,  spd: 2.5, r: 8,  col: "#00e5ff", xp: 1,  dmg: 6,  goldMin: 0, goldMax: 0 },
+  shadow:    { name: "그림자",   hp: 20,  spd: 1.5, r: 10, col: "#37474f", xp: 2,  dmg: 8,  goldMin: 0, goldMax: 1 },
   skeleton:  { name: "해골병사", hp: 50,  spd: 0.9, r: 14, col: "#efebe9", xp: 3,  dmg: 12, goldMin: 1, goldMax: 2 },
   ghost:     { name: "처녀귀신", hp: 35,  spd: 1.1, r: 12, col: "#e8eaf6", xp: 4,  dmg: 18, goldMin: 1, goldMax: 3 },
   bulgasari: { name: "불가사리", hp: 100, spd: 0.55, r: 18, col: "#78909c", xp: 5,  dmg: 15, goldMin: 3, goldMax: 6 },
   jangsan:   { name: "장산범",   hp: 40,  spd: 1.6, r: 15, col: "#ff8a65", xp: 3,  dmg: 16, goldMin: 1, goldMax: 2 },
 
   // 중급 적들 (2-3 스테이지)
-  goblin:    { name: "Goblin",  hp: 30,  spd: 1.8, r: 10, col: "#8d6e63", xp: 2,  dmg: 14, goldMin: 1, goldMax: 2 },
-  wetGhost:  { name: "물귀신",  hp: 45,  spd: 1.2, r: 11, col: "#4dd0e1", xp: 5,  dmg: 20, goldMin: 2, goldMax: 4 },
+  goblin:    { name: "고블린",   hp: 30,  spd: 1.8, r: 10, col: "#8d6e63", xp: 2,  dmg: 14, goldMin: 1, goldMax: 2 },
+  wetGhost:  { name: "물귀신",   hp: 45,  spd: 1.2, r: 11, col: "#4dd0e1", xp: 5,  dmg: 20, goldMin: 2, goldMax: 4 },
   fireEnt:   { name: "불꽃정령", hp: 80,  spd: 0.8, r: 16, col: "#ff5722", xp: 6,  dmg: 22, goldMin: 3, goldMax: 5 },
-  tombKeeper:{ name: "무덤지기", hp: 120, spd: 0.7, r: 17, col: "#455a64", xp: 7,  dmg: 18, goldMin: 4, goldMax: 7 },
+  tombKeeper: { name: "무덤지기", hp: 120, spd: 0.7, r: 17, col: "#455a64", xp: 7,  dmg: 18, goldMin: 4, goldMax: 7 },
+  plagueRat: { name: "역병쥐",   hp: 35,  spd: 2.0, r: 9,  col: "#827717", xp: 4,  dmg: 14, goldMin: 2, goldMax: 3 },
 
   // 고급 적들 (3-4 스테이지)
-  demonKnight:{ name: "악마기사", hp: 200, spd: 0.9, r: 20, col: "#37474f", xp: 12, dmg: 30, goldMin: 8, goldMax: 15 },
-  soulSiphon:{ name: "영혼 흡수자", hp: 60,  spd: 1.4, r: 12, col: "#7c4dff", xp: 8,  dmg: 25, goldMin: 5, goldMax: 8 },
-  iceGolem:  { name: "얼음골렘", hp: 180, spd: 0.5, r: 22, col: "#90caf9", xp: 10, dmg: 28, goldMin: 6, goldMax: 12 },
-  plagueRat: { name: "역병쥐",   hp: 55,  spd: 2.0, r: 14, col: "#a1887f", xp: 6,  dmg: 20, goldMin: 3, goldMax: 5 },
+  demonKnight: { name: "악마기사", hp: 150, spd: 0.9, r: 16, col: "#c62828", xp: 8, dmg: 25, goldMin: 5, goldMax: 8, elite: true },
+  soulSiphon:  { name: "영혼흡수자", hp: 100, spd: 1.1, r: 14, col: "#6a1b9a", xp: 7, dmg: 20, goldMin: 4, goldMax: 6 },
+  iceGolem:    { name: "얼음골렘", hp: 200, spd: 0.5, r: 20, col: "#80deea", xp: 9, dmg: 28, goldMin: 5, goldMax: 9, elite: true },
+  ghostKing:   { name: "귀왕",   hp: 180, spd: 0.8, r: 18, col: "#4a148c", xp: 10, dmg: 30, goldMin: 6, goldMax: 10 },
 
-  // 엘리트 적들
-  imugi:     { name: "이무기",   hp: 350, spd: 0.7, r: 22, col: "#66bb6a", xp: 25, dmg: 35, goldMin: 15, goldMax: 25, elite: true },
-  dokkaKing: { name: "도깨비왕", hp: 500, spd: 0.6, r: 24, col: "#ff3d00", xp: 35, dmg: 40, goldMin: 20, goldMax: 35, elite: true },
-  haetae:    { name: "해태",     hp: 600, spd: 0.45, r: 26, col: "#ffc107", xp: 40, dmg: 45, goldMin: 25, goldMax: 40, elite: true },
-  ghostKing: { name: "귀왕",     hp: 450, spd: 0.8, r: 23, col: "#5c6bc0", xp: 30, dmg: 38, goldMin: 18, goldMax: 30, elite: true },
+  // 보스 적들
+  dokkaKing: { name: "도깨비왕", hp: 800, spd: 1.0, r: 35, col: "#ff6f00", xp: 50, dmg: 35, goldMin: 30, goldMax: 50, boss: true },
+  haetae:    { name: "해태",     hp: 1000, spd: 0.7, r: 38, col: "#5d4037", xp: 60, dmg: 40, goldMin: 40, goldMax: 60, boss: true },
+  imugi:     { name: "이무기",   hp: 900, spd: 1.3, r: 32, col: "#1b5e20", xp: 55, dmg: 38, goldMin: 35, goldMax: 55, boss: true },
+  gumiho:    { name: "구미호",   hp: 1200, spd: 1.5, r: 30, col: "#e91e63", xp: 70, dmg: 45, goldMin: 50, goldMax: 80, boss: true },
 
-  // 보스들
-  gumiho:    { name: "구미호",   hp: 1200, spd: 0.5, r: 30, col: "#f06292", xp: 100, dmg: 50, boss: true, goldMin: 60, goldMax: 100 },
-  dragon:    { name: "용왕",     hp: 1800, spd: 0.4, r: 35, col: "#1e88e5", xp: 150, dmg: 65, boss: true, goldMin: 100, goldMax: 150 },
-  yeomra:    { name: "염라대왕", hp: 2000, spd: 0.35, r: 38, col: "#212121", xp: 200, dmg: 70, boss: true, goldMin: 150, goldMax: 200 },
-
-  // 특수 적들
-  foxClone:  { name: "여우분신", hp: 100, spd: 1.4, r: 16, col: "#f48fb1", xp: 6,  dmg: 15, goldMin: 1, goldMax: 3 },
-  shadow:    { name: "그림자",  hp: 25,  spd: 2.2, r: 9,  col: "#263238", xp: 2,  dmg: 12, goldMin: 0, goldMax: 1 },
-  mimic:     { name: "미믹",    hp: 150, spd: 0.3, r: 14, col: "#ffd54f", xp: 15, dmg: 8,  goldMin: 20, goldMax: 30, special: "decepti ve" },
+  // 신규 적들 (확장)
+  snakeSpirit: { name: "뱀精", hp: 45, spd: 1.4, r: 12, col: "#7cb342", xp: 4, dmg: 16, goldMin: 1, goldMax: 3 },
+  crowTsukuyomi: { name: "달乌鸦", hp: 60, spd: 2.2, r: 11, col: "#263238", xp: 5, dmg: 18, goldMin: 2, goldMax: 4 },
+  kappa: { name: "카파", hp: 70, spd: 1.3, r: 14, col: "#66bb6a", xp: 4, dmg: 20, goldMin: 2, goldMax: 5 },
+  oni: { name: "오니", hp: 140, spd: 1.0, r: 18, col: "#d32f2f", xp: 8, dmg: 28, goldMin: 5, goldMax: 8, elite: true },
+  yokaiLord: { name: "요괴lord", hp: 1500, spd: 0.9, r: 40, col: "#311b92", xp: 80, dmg: 50, goldMin: 60, goldMax: 100, boss: true },
 };
 
 // 적 생성 테이블 - 스테이지별 다양화
@@ -654,6 +879,57 @@ const WDEFS = {
       { dmg: 28, cd: 1100, spd: 6.0, cnt: 2, prc: 4 }, { dmg: 33, cd: 1000, spd: 6.3, cnt: 2, prc: 4 },
       { dmg: 40, cd: 900, spd: 6.6, cnt: 2, prc: 5 },  { dmg: 48, cd: 800, spd: 7.0, cnt: 3, prc: 5 },
       { dmg: 56, cd: 700, spd: 7.5, cnt: 3, prc: 6 },  { dmg: 68, cd: 600, spd: 8.0, cnt: 3, prc: 8 },
+    ],
+  },
+  // New weapons expansion
+  kunai: {
+    name: "쿠나이", desc: "빠른 속도의 표기投射",
+    icon: "🗡️", col: "#607d8b", attr: "yang", maxLv: 8,
+    lvs: [
+      { dmg: 12, cd: 600, spd: 8, cnt: 1, prc: 2 }, { dmg: 15, cd: 550, spd: 8.5, cnt: 1, prc: 2 },
+      { dmg: 18, cd: 500, spd: 9, cnt: 2, prc: 3 }, { dmg: 22, cd: 450, spd: 9.5, cnt: 2, prc: 3 },
+      { dmg: 27, cd: 400, spd: 10, cnt: 3, prc: 4 }, { dmg: 32, cd: 350, spd: 11, cnt: 3, prc: 4 },
+      { dmg: 38, cd: 300, spd: 12, cnt: 4, prc: 5 }, { dmg: 45, cd: 250, spd: 13, cnt: 4, prc: 6 },
+    ],
+  },
+  dragonBreath: {
+    name: "용숨", desc: "화염을 뿜어내는 용의 숨결",
+    icon: "🐉", col: "#ff5722", attr: "yang", maxLv: 8,
+    lvs: [
+      { dmg: 15, cd: 2500, rad: 60, dur: 1.5 }, { dmg: 18, cd: 2300, rad: 70, dur: 1.6 },
+      { dmg: 22, cd: 2100, rad: 80, dur: 1.7 }, { dmg: 26, cd: 1900, rad: 90, dur: 1.8 },
+      { dmg: 32, cd: 1700, rad: 100, dur: 2.0 }, { dmg: 38, cd: 1500, rad: 115, dur: 2.2 },
+      { dmg: 45, cd: 1300, rad: 130, dur: 2.4 }, { dmg: 55, cd: 1100, rad: 150, dur: 2.6 },
+    ],
+  },
+  spiritChain: {
+    name: "영혼사슬", desc: "적들을 결속시키는 malevolent 사슬",
+    icon: "⛓️", col: "#9c27b0", attr: "yin", maxLv: 8,
+    lvs: [
+      { dmg: 8, cd: 1800, rad: 70, link: 2 }, { dmg: 10, cd: 1700, rad: 78, link: 2 },
+      { dmg: 12, cd: 1600, rad: 86, link: 3 }, { dmg: 15, cd: 1500, rad: 95, link: 3 },
+      { dmg: 18, cd: 1400, rad: 105, link: 4 }, { dmg: 22, cd: 1300, rad: 118, link: 4 },
+      { dmg: 27, cd: 1200, rad: 132, link: 5 }, { dmg: 32, cd: 1000, rad: 148, link: 6 },
+    ],
+  },
+  mirror: {
+    name: "분신거울", desc: "거울결계로 적을 공격",
+    icon: "🪞", col: "#e0e0e0", attr: "yin", maxLv: 8,
+    lvs: [
+      { dmg: 14, cd: 2000, rad: 65, reflect: 1 }, { dmg: 17, cd: 1900, rad: 72, reflect: 1 },
+      { dmg: 20, cd: 1800, rad: 80, reflect: 2 }, { dmg: 24, cd: 1700, rad: 90, reflect: 2 },
+      { dmg: 29, cd: 1600, rad: 102, reflect: 3 }, { dmg: 35, cd: 1500, rad: 115, reflect: 3 },
+      { dmg: 42, cd: 1400, rad: 130, reflect: 4 }, { dmg: 50, cd: 1200, rad: 148, reflect: 5 },
+    ],
+  },
+  bambooSpear: {
+    name: "대창", desc: "긴 대 Bamboo lance로 관통",
+    icon: "🎋", col: "#7cb342", attr: "yang", maxLv: 8,
+    lvs: [
+      { dmg: 25, cd: 1400, len: 100, pierce: 1 }, { dmg: 30, cd: 1300, len: 110, pierce: 1 },
+      { dmg: 36, cd: 1200, len: 122, pierce: 2 }, { dmg: 42, cd: 1100, len: 135, pierce: 2 },
+      { dmg: 50, cd: 1000, len: 150, pierce: 3 }, { dmg: 58, cd: 900, len: 168, pierce: 3 },
+      { dmg: 68, cd: 800, len: 188, pierce: 4 }, { dmg: 80, cd: 700, len: 210, pierce: 5 },
     ],
   },
 };
@@ -823,37 +1099,56 @@ const MAPS = {
 
 /* ─── STAGE SYSTEM ─── */
 const STAGES = {
-  // 챕터 1: 어두운 밤의 숲
+  // 챕터 1: 어두운 밤의 숲 (5스테이지)
   "1-1": {
     chapter: 1, name: "대나무 숲", desc: "가장 첫 번째 숲, 도깨비들이 사냥감을 찾고 있다",
     map: "bamboo", difficulty: "easy",
-    clearTime: 180, // 3분
-    stars: { 1: 180, 2: 150, 3: 120 },
+    clearTime: 150,
+    stars: { 1: 150, 2: 120, 3: 90 },
     enemies: ["dokkaebi", "wisp", "shadow"],
     boss: null,
     unlockCost: 0,
   },
   "1-2": {
-    chapter: 1, name: "으스스한 길", desc: "등골이 서늘해지는 길, 해골병사가 nocturnal을 찾아온다",
+    chapter: 1, name: "어두운 산책로", desc: "달빛이 깃든 오솔길",
+    map: "bamboo", difficulty: "easy",
+    clearTime: 180,
+    stars: { 1: 180, 2: 150, 3: 120 },
+    enemies: ["dokkaebi", "wisp", "goblin"],
+    boss: null,
+    unlockCost: 0,
+  },
+  "1-3": {
+    chapter: 1, name: "으스스한 길", desc: "등골이 서늘해지는 길, 해골병사가 나타난다",
     map: "graveyard", difficulty: "easy",
-    clearTime: 210, // 3분 30초
+    clearTime: 210,
     stars: { 1: 210, 2: 180, 3: 150 },
     enemies: ["dokkaebi", "wisp", "skeleton", "goblin"],
     boss: null,
     unlockCost: 0,
   },
-  "1-3": {
-    chapter: 1, name: "버려진 사당", desc: "오랜 버려진 사당, 그 안에는 위험한 것들이 있다",
+  "1-4": {
+    chapter: 1, name: "버려진 사당", desc: "오랜 버려진 사당, 유령들이 떠돌다",
     map: "graveyard", difficulty: "normal",
-    clearTime: 240, // 4분
+    clearTime: 240,
     stars: { 1: 240, 2: 210, 3: 180 },
     enemies: ["skeleton", "ghost", "goblin", "wetGhost"],
+    boss: null,
+    unlockCost: 1,
+    reqStars: 1,
+  },
+  "1-5": {
+    chapter: 1, name: "도깨비王的 성", desc: "도깨비왕이 지배하는 성, 최종 전투",
+    map: "graveyard", difficulty: "normal",
+    clearTime: 300,
+    stars: { 1: 300, 2: 270, 3: 240 },
+    enemies: ["skeleton", "ghost", "wetGhost", "tombKeeper"],
     boss: "dokkaKing",
-    unlockCost: 1, // 이전 스테이지 클리어 필요
-    reqStars: 1, // 별 1개 이상
+    unlockCost: 3,
+    reqStars: 3,
   },
 
-  // 챕터 2: 저승의 문
+  // 챕터 2: 저승의 문 (5스테이지)
   "2-1": {
     chapter: 2, name: "무덤길", desc: "저승으로 향하는 길, 영혼들이 떠돌고 있다",
     map: "graveyard", difficulty: "normal",
@@ -861,31 +1156,51 @@ const STAGES = {
     stars: { 1: 240, 2: 210, 3: 180 },
     enemies: ["skeleton", "ghost", "wetGhost", "tombKeeper"],
     boss: null,
-    unlockCost: 3, // 1-3 클리어 + 별 3개
-    reqStars: 3,
+    unlockCost: 6,
+    reqStars: 6,
   },
   "2-2": {
+    chapter: 2, name: "영혼의 숲", desc: "울창한 숲속, 잊힌 영혼들이 깃들어 있다",
+    map: "forest", difficulty: "hard",
+    clearTime: 270,
+    stars: { 1: 270, 2: 240, 3: 210 },
+    enemies: ["ghost", "tombKeeper", "fireEnt", "goblin"],
+    boss: null,
+    unlockCost: 8,
+    reqStars: 8,
+  },
+  "2-3": {
     chapter: 2, name: "잠든 묘지", desc: "영혼들이 깊이 잠든 곳, Grave Keeper가 감시한다",
     map: "graveyard", difficulty: "hard",
     clearTime: 300,
     stars: { 1: 300, 2: 270, 3: 240 },
     enemies: ["ghost", "tombKeeper", "fireEnt", "plagueRat"],
     boss: null,
-    unlockCost: 6,
-    reqStars: 6,
+    unlockCost: 10,
+    reqStars: 10,
   },
-  "2-3": {
-    chapter: 2, name: "저승문", desc: "저승의 문前面, 강력한 수호자들이 있다",
+  "2-4": {
+    chapter: 2, name: "저승의 문앞", desc: "저승의 문前面, 강력한 수호자들이 있다",
     map: "graveyard", difficulty: "hard",
     clearTime: 360,
     stars: { 1: 360, 2: 330, 3: 300 },
     enemies: ["tombKeeper", "fireEnt", "demonKnight", "soulSiphon"],
+    boss: null,
+    unlockCost: 12,
+    reqStars: 12,
+  },
+  "2-5": {
+    chapter: 2, name: "저승문", desc: "저승의 문, 해태가 지키고 있다",
+    map: "graveyard", difficulty: "nightmare",
+    clearTime: 420,
+    stars: { 1: 420, 2: 390, 3: 360 },
+    enemies: ["tombKeeper", "fireEnt", "demonKnight", "soulSiphon", "ghostKing"],
     boss: "haetae",
-    unlockCost: 9,
-    reqStars: 9,
+    unlockCost: 15,
+    reqStars: 15,
   },
 
-  // 챕터 3: 용궁
+  // 챕터 3: 용궁 (5스테이지)
   "3-1": {
     chapter: 3, name: "해안가", desc: "바다와 숲의 경계, 물귀신이 나타난다",
     map: "sea", difficulty: "hard",
@@ -893,36 +1208,151 @@ const STAGES = {
     stars: { 1: 300, 2: 270, 3: 240 },
     enemies: ["wetGhost", "plagueRat", "soulSiphon", "goblin"],
     boss: null,
-    unlockCost: 12,
-    reqStars: 12,
+    unlockCost: 18,
+    reqStars: 18,
   },
   "3-2": {
-    chapter: 3, name: "용궁 입구", desc: "용궁으로 들어서는 곳, inúmera한 적들이 있다",
+    chapter: 3, name: "수중 동굴", desc: "바다深处的 동굴, 위험한 적들이 있다",
+    map: "sea", difficulty: "nightmare",
+    clearTime: 330,
+    stars: { 1: 330, 2: 300, 3: 270 },
+    enemies: ["soulSiphon", "iceGolem", "plagueRat", "wetGhost"],
+    boss: null,
+    unlockCost: 21,
+    reqStars: 21,
+  },
+  "3-3": {
+    chapter: 3, name: "용궁 입구", desc: "용궁으로 들어서는 곳, 강력한 수호자들이 있다",
     map: "sea", difficulty: "nightmare",
     clearTime: 360,
     stars: { 1: 360, 2: 330, 3: 300 },
     enemies: ["soulSiphon", "iceGolem", "demonKnight", "plagueRat"],
     boss: null,
-    unlockCost: 15,
-    reqStars: 15,
+    unlockCost: 24,
+    reqStars: 24,
   },
-  "3-3": {
-    chapter: 3, name: "용왕의大殿", desc: "용왕이 지키는 곳,终极挑战",
-    map: "sea", difficulty: "nightmare",
+  "3-4": {
+    chapter: 3, name: "용의 궁전", desc: "용왕의宮殿, Elite들이 지키고 있다",
+    map: "dokkabong", difficulty: "nightmare",
     clearTime: 420,
     stars: { 1: 420, 2: 390, 3: 360 },
     enemies: ["iceGolem", "demonKnight", "ghostKing", "imugi"],
+    boss: null,
+    unlockCost: 27,
+    reqStars: 27,
+  },
+  "3-5": {
+    chapter: 3, name: "용왕의大殿", desc: "용왕이 지키는 곳, 최종挑战",
+    map: "sea", difficulty: "hell",
+    clearTime: 480,
+    stars: { 1: 480, 2: 450, 3: 420 },
+    enemies: ["iceGolem", "demonKnight", "ghostKing", "imugi", "haetae"],
     boss: "dragon",
-    unlockCost: 18,
-    reqStars: 18,
+    unlockCost: 30,
+    reqStars: 30,
   },
 };
 
 const CHAPTERS = {
-  1: { name: "어두운 밤의 숲", emoji: "🌲", stages: ["1-1", "1-2", "1-3"], reqStars: 0, unlockDesc: "시작부터" },
-  2: { name: "저승의 문", emoji: "⛩️", stages: ["2-1", "2-2", "2-3"], reqStars: 3, unlockDesc: "챕터1에서 별 3개 획득" },
-  3: { name: "용궁", emoji: "🐉", stages: ["3-1", "3-2", "3-3"], reqStars: 9, unlockDesc: "챕터2에서 별 9개 획득" },
+  1: { name: "어두운 밤의 숲", emoji: "🌲", stages: ["1-1", "1-2", "1-3", "1-4", "1-5"], reqStars: 0, unlockDesc: "시작부터" },
+  2: { name: "저승의 문", emoji: "⛩️", stages: ["2-1", "2-2", "2-3", "2-4", "2-5"], reqStars: 6, unlockDesc: "챕터1에서 별 6개 획득" },
+  3: { name: "용궁", emoji: "🐉", stages: ["3-1", "3-2", "3-3", "3-4", "3-5"], reqStars: 15, unlockDesc: "챕터2에서 별 15개 획득" },
 };
+
+/* ─── GACHA SYSTEM ─── */
+// 유령 가챠
+const GHOSTS = {
+  // 일반 (N)
+  wanderingSpirit: { name: "떠돌이 유령", rarity: "N", type: "attack", stats: { hp: 50, atk: 10 }, skill: "basicAttack", icon: "👻" },
+  tinyGhost: { name: "작은 유령", rarity: "N", type: "support", stats: { hp: 40, atk: 8 }, skill: "blessing", icon: "✨" },
+  shadowSprite: { name: "그림자 정령", rarity: "N", type: "attack", stats: { hp: 45, atk: 12 }, skill: "shadowStrike", icon: "🌑" },
+
+  // 레어 (R)
+  forestGuardian: { name: "숲의 수호자", rarity: "R", type: "defense", stats: { hp: 100, atk: 15 }, skill: "shieldAura", icon: "🌳" },
+  waterSpirit: { name: "물귀신", rarity: "R", type: "attack", stats: { hp: 80, atk: 20 }, skill: "waterSlash", icon: "💧" },
+  fireWisp: { name: "불꽃 정령", rarity: "R", type: "attack", stats: { hp: 75, atk: 22 }, skill: "flameBurst", icon: "🔥" },
+
+  // 에픽 (SR)
+  thunderSpirit: { name: "천둥령", rarity: "SR", type: "attack", stats: { hp: 120, atk: 35 }, skill: "thunderStorm", icon: "⚡" },
+  iceWraith: { name: "얼음망령", rarity: "SR", type: "attack", stats: { hp: 110, atk: 30 }, skill: "frostNova", icon: "❄️" },
+  darkKnight: { name: "어둠의 기사", rarity: "SR", type: "defense", stats: { hp: 180, atk: 25 }, skill: "voidShield", icon: "🗡️" },
+  soulHunter: { name: "영혼 사냥꾼", rarity: "SR", type: "attack", stats: { hp: 100, atk: 40 }, skill: "soulSiphon", icon: "🎯" },
+
+  // 전설 (SSR)
+  nineTailedFox: { name: "구미호", rarity: "SSR", type: "hybrid", stats: { hp: 200, atk: 50 }, skill: "allureCharm", icon: "🦊" },
+  grimReaper: { name: "저승사자", rarity: "SSR", type: "attack", stats: { hp: 180, atk: 60 }, skill: "deathScythe", icon: "💀" },
+  dragonSpirit: { name: "용령", rarity: "SSR", type: "attack", stats: { hp: 220, atk: 55 }, skill: "dragonBreath", icon: "🐉" },
+
+  // 신화 (UR)
+  cheonyeoQueen: { name: "처녀귀왕", rarity: "UR", type: "hybrid", stats: { hp: 300, atk: 80 }, skill: "soulDrain", icon: "👸" },
+  doomLord: { name: "파멸의 군주", rarity: "UR", type: "attack", stats: { hp: 280, atk: 100 }, skill: "cataclysm", icon: "😈" },
+};
+
+const GACHA_RARITY = {
+  N:  { weight: 50, color: "#a0a0a0", name: "일반", icon: "⚪" },
+  R:  { weight: 30, color: "#4fc3f7", name: "레어", icon: "🔵" },
+  SR: { weight: 14, color: "#ab47bc", name: "에픽", icon: "🟣" },
+  SSR:{ weight: 4,  color: "#ff9800", name: "전설", icon: "🟠" },
+  UR: { weight: 2,  color: "#ff1744", name: "신화", icon: "🔴" },
+};
+
+const GACHA_COST = { normal: 100, gold: 1000 };
+const PITY_LIMIT = 90; // 90회 후 보장
+
+// 가챠 데이터 로드/저장
+function loadGachaData() {
+  return _load("yokai_gacha", {
+    spiritStones: 500, // 시작 재화
+    goldSpiritStones: 0,
+    ghosts: {},
+    pityCounter: 0,
+    totalPulls: 0,
+  });
+}
+function saveGachaData(v) { _save("yokai_gacha", v); }
+
+function pullGacha(type = "normal", count = 1) {
+  const data = loadGachaData();
+  const cost = type === "gold" ? GACHA_COST.gold : GACHA_COST.normal;
+
+  if (type === "normal" && data.spiritStones < cost * count) return null;
+  if (type === "gold" && data.goldSpiritStones < cost * count) return null;
+
+  // 차감
+  if (type === "normal") data.spiritStones -= cost * count;
+  else data.goldSpiritStones -= cost * count;
+
+  const results = [];
+  for (let i = 0; i < count; i++) {
+    data.pityCount++;
+    data.totalPulls++;
+
+    // 天井判定
+    let rarity;
+    if (data.pityCount >= PITY_LIMIT) {
+      rarity = "SSR";
+      data.pityCount = 0;
+    } else {
+      const rand = Math.random() * 100;
+      let accum = 0;
+      for (const [r, info] of Object.entries(GACHA_RARITY)) {
+        accum += info.weight;
+        if (rand < accum) { rarity = r; break; }
+      }
+    }
+
+    // 해당 등급 유령 중 랜덤 선택
+    const ghostList = Object.entries(GHOSTS).filter(([k, v]) => v.rarity === rarity);
+    const [ghostId, ghost] = ghostList[Math.floor(Math.random() * ghostList.length)];
+
+    // inventory에 추가
+    data.ghosts[ghostId] = (data.ghosts[ghostId] || 0) + 1;
+    results.push({ id: ghostId, ...ghost });
+  }
+
+  saveGachaData(data);
+  return results;
+}
 
 /* ─── DAILY CHALLENGES ─── */
 const DAILY_CHALLENGES = [
@@ -948,9 +1378,41 @@ function getDailyChallenge() {
 }
 
 function loadDailyStats() {
-  return _load("yokia_daily", { lastDate: "", bestTime: 0, completed: false });
+  return _load("yokia_daily", { lastDate: "", bestTime: 0, completed: false, streak: 0, lastPlayDate: "" });
 }
 function saveDailyStats(v) { _save("yokia_daily", v); }
+
+function checkDailyStreak() {
+  const today = new Date().toDateString();
+  const stats = loadDailyStats();
+  const yesterday = new Date(Date.now() - 86400000).toDateString();
+
+  if (stats.lastPlayDate === yesterday) {
+    // Consecutive day - increment streak
+    stats.streak = (stats.streak || 0) + 1;
+  } else if (stats.lastPlayDate !== today) {
+    // Missed days - reset streak
+    stats.streak = 1;
+  }
+
+  stats.lastPlayDate = today;
+  saveDailyStats(stats);
+  return stats.streak;
+}
+
+function getDailyStreakBonus() {
+  const streak = checkDailyStreak();
+  const bonuses = {
+    1: 1.1,  // 10% gold bonus
+    2: 1.15, // 15%
+    3: 1.2,  // 20%
+    4: 1.25, // 25%
+    5: 1.3,  // 30%
+    6: 1.35, // 35%
+    7: 1.5,  // 50% - weekly bonus!
+  };
+  return bonuses[streak] || 1;
+}
 
 /* ── Time Attack Best Times ── */
 function loadBestTime(mode) {
@@ -980,6 +1442,7 @@ const ACHIEVEMENTS = {
   kill100:          { name: "고급 사냥꾼",   desc: "적 100 처치", icon: "💀", reward: 300 },
   kill500:          { name: "숙련 사냥꾼",   desc: "적 500 처치", icon: "🩸", reward: 500 },
   kill1000:         { name: "대名师",       desc: "적 1000 처치", icon: "🔥", reward: 1000 },
+  kill5000:         { name: "요괴graduate", desc: "적 5000 처치", icon: "🏅", reward: 5000 },
   // 보스/엘리트
   killElite:        { name: "엘리트 사냥",   desc: "엘리트 적 1 처치", icon: "⭐", reward: 100 },
   kill5Elite:       { name: "엘리트 학살자", desc: "엘리트 5 처치", icon: "🌟", reward: 300 },
@@ -994,17 +1457,35 @@ const ACHIEVEMENTS = {
   lv10:             { name: "레벨 10",     desc: "레벨 10 도달", icon: "🔟", reward: 200 },
   lv30:             { name: "레벨 30",     desc: "레벨 30 도달", icon: "🔝", reward: 500 },
   lv50:             { name: "레벨 50",     desc: "레벨 50 도달", icon: "🌟", reward: 1000 },
+  lv100:            { name: "레벨 100",    desc: "레벨 100 도달", icon: "💎", reward: 5000 },
   // 무기
   maxWeapon:       { name: "무기大师",     desc: "무기 최대 레벨", icon: "⚔️", reward: 300 },
   evolveWeapon:    { name: "무기 진화",    desc: "무기 1회 진화", icon: "✨", reward: 400 },
   evolve3Weapon:   { name: "진화 마스터",  desc: "무기 3회 진화", icon: "💫", reward: 1000 },
+  useAllWeapons:   { name: "무기 수집가",  desc: "모든 무기 1회 이상 사용", icon: "🎖️", reward: 1000 },
   // 캐릭터
   unlockChar:      { name: "새 얼굴",      desc: "캐릭터 1명 해금", icon: "👤", reward: 100 },
   unlockAllChar:   { name: "캐릭터 컬렉터", desc: "모든 캐릭터 해금", icon: "👥", reward: 2000 },
+  // 콤보
+  combo10:          { name: "연속 10킬",   desc: "콤보 10 달성", icon: "🔥", reward: 200 },
+  combo50:         { name: "연속 50킬",   desc: "콤보 50 달성", icon: "⚡", reward: 500 },
+  combo100:        { name: "연속 100킬",  desc: "콤보 100 달성", icon: "💥", reward: 1500 },
   // 맵
   clearBamboo:     { name: "대나무 종결자", desc: "대나무 숲 클리어", icon: "🎋", reward: 200 },
   clearGraveyard:  { name: "고인 종결자",   desc: "지하묘지 클리어", icon: "⚰️", reward: 300 },
   clearSea:        { name: "해적",         desc: "바다 맵 클리어", icon: "🌊", reward: 400 },
+  // 특수
+  noDamageWin:    { name: "무손실 클리어", desc: "피격 없이 클리어", icon: "🛡️", reward: 2000 },
+  speedRun:        { name: "스피드런",    desc: "5분 이내 클리어", icon: "⏩", reward: 1500 },
+  allDiffClear:    { name: "모든 난이도 클리어", desc: "5가지 난이도 모두 클리어", icon: "🎯", reward: 5000 },
+  metaMax:         { name: "영구 강화 달성", desc: "모든 영구 강화 최대 레벨", icon: "💰", reward: 3000 },
+  // 파워업
+  powerup10:      { name: "파워업 수집가", desc: "파워업 10개 획득", icon: "⚡", reward: 150 },
+  powerup50:       { name: "파워업 달인",   desc: "파워업 50개 획득", icon: "✨", reward: 400 },
+  // 가챠 관련
+  firstGacha:      { name: "첫 가챠",     desc: "첫 가챠 수행", icon: "🎰", reward: 100 },
+  getSSR:          { name: "SSR 획득",    desc: "SSR 등급 유령 획득", icon: "🌟", reward: 500 },
+  getUR:           { name: "UR 획득",     desc: "UR 등급 유령 획득", icon: "💎", reward: 2000 },
   clearForest:     { name: "숲 파수관",    desc: "잠든 숲 클리어", icon: "🌲", reward: 400 },
   clearDokkabong:  { name: "도깨비 왕",    desc: "도깨비 성 클리어", icon: "🏰", reward: 500 },
   // 난이도
@@ -1075,6 +1556,11 @@ const POWERUPS = {
   magnet: { name: "자석", icon: "🧲", effect: "magnet", val: 3, dur: 20, col: "#4caf50" },
   doubleXP: { name: "好运", icon: "⭐", effect: "xp", val: 1, dur: 20, col: "#ffd700" },
   heal: { name: "회복", icon: "💚", effect: "heal", val: 20, dur: 0, col: "#e91e63" },
+  // New powerups for variety
+  shield: { name: "보호막", icon: "🛡️", effect: "shield", val: 0.5, dur: 15, col: "#42a5f5" },
+  slowField: { name: "감속장", icon: "🌀", effect: "slowField", val: 0.3, dur: 12, col: "#78909c" },
+  critBoost: { name: "치명타", icon: "🎯", effect: "critBoost", val: 0.15, dur: 20, col: "#ff7043" },
+  lifeSteal: { name: "흡혈", icon: "🩸", effect: "lifeSteal", val: 0.05, dur: 15, col: "#c62828" },
 };
 
 /* ─── PETS (companions) ─── */
@@ -1109,12 +1595,33 @@ const DIFFICULTIES = {
     unlockCheck: (s) => s.gamesWon >= 10 },
 };
 
+/* ─── TUTORIAL SYSTEM ─── */
+const TUTORIAL_STEPS = [
+  { id: "move", title: "이동 방법", desc: "WASD 또는 방향키로 이동하세요", icon: "🕹️", condition: () => true },
+  { id: "attack", title: "공격 방법", desc: "무기가 자동으로 근처 적을 공격합니다", icon: "⚔️", condition: () => true },
+  { id: "collect", title: "아이템 수집", desc: "경험치와 골드를 떨어뜨리는 적을 처치하세요", icon: "💎", condition: (g) => g.killCount >= 3 },
+  { id: "levelup", title: "레벨업", desc: "경험치를 모아 레벨이 오르면 무기를 강화하세요", icon: "⬆️", condition: (g) => g.level >= 2 },
+  { id: "weapon", title: "새 무기 획득", desc: "레벨업 시 다른 무기를 선택할 수 있습니다", icon: "🎁", condition: (g) => g.weapons.length >= 2 },
+  { id: "chest", title: "보물상자", desc: "보스나 엘리트 적을 처치하면 보물상자가 떨어집니다", icon: "📦", condition: (g) => g.chests && g.chests.length > 0 },
+  { id: "powerup", title: "파워업", desc: "적을 처치하면 파워업을 떨어뜨립니다", icon: "✨", condition: (g) => g.powerupDrops && g.powerupDrops.length > 0 },
+  { id: "boss", title: "보스戰", desc: "5분 후 보스가 등장합니다.全力以赴!", icon: "👹", condition: (g) => g.elapsed >= 300 },
+];
+
+function loadTutorialProgress() { return _load("yokai_tutorial", { completed: [], currentStep: 0, firstTime: true }); }
+function saveTutorialProgress(v) { _save("yokai_tutorial", v); }
+function showTutorialStep(step) {
+  const tut = loadTutorialProgress();
+  if (tut.completed.includes(step.id)) return null;
+  return step;
+}
+
 /* ═══════════════════════════ GAME ═══════════════════════════ */
 class Game {
   constructor() {
     this.cvs = document.getElementById("gc");
     this.ctx = this.cvs.getContext("2d");
     this.sfx = new Sfx();
+    this.vfx = new VFX(); // Visual effects system
     this.keys = {}; this.touch = { active: false, dx: 0, dy: 0 };
     this.state = "menu";
     this.isMobile = "ontouchstart" in window;
@@ -1139,7 +1646,18 @@ class Game {
     });
     showBestRecord();
     this._updateMenuGold();
+    this._hideLoading();
     this._raf();
+  }
+
+  /* ── LOADING SCREEN ── */
+  _hideLoading() {
+    const loadingScreen = document.getElementById("loading-screen");
+    const loadingBar = document.getElementById("loading-bar");
+    if (loadingBar) loadingBar.style.width = "100%";
+    setTimeout(() => {
+      if (loadingScreen) loadingScreen.classList.add("hidden");
+    }, 300);
   }
 
   /* ── CHECK UNLOCKS ── */
@@ -1172,12 +1690,14 @@ class Game {
       charSelect: $("screen-chars"), petScreen: $("screen-pet"), shop: $("screen-shop"), settings: $("screen-settings"),
       achievements: $("screen-achievements"), daily: $("screen-daily"),
       leaderboard: $("screen-leaderboard"),
-      stageScreen: $("screen-stages"), stageClearScreen: $("screen-stage-clear"),
+      stageScreen: $("screen-stages"), stageClearScreen: $("screen-stage-clear"), gachaScreen: $("screen-gacha"),
       dailyChallenge: $("daily-challenge"), dailyBest: $("daily-best"),
       artifactScreen: $("screen-artifact"),
       stageList: $("stage-list"), chapterTabs: $("chapter-tabs"), stageTotalStars: $("stage-total-stars"),
       stageClearStars: $("stage-clear-stars"), stageClearStats: $("stage-clear-stats"),
       hpBar: $("hp-bar"), hpTxt: $("hp-txt"), xpBar: $("xp-bar"), lvTxt: $("lv-txt"),
+      bossHpWrap: $("boss-hp-wrap"), bossHpBar: $("boss-hp-bar"),
+      screenFlash: $("screen-flash"),
       timer: $("timer"), kills: $("kills"), wslots: $("weapon-slots"),
       choices: $("choices"), endTitle: $("end-title"), endStats: $("end-stats"),
       joyZone: $("joy-zone"), menuGold: $("menu-gold"), hudGold: $("hud-gold"),
@@ -1223,6 +1743,12 @@ class Game {
 
     /* settings */
     $("btn-back-settings").onclick = () => { this._saveSettingsFromUI(); this._showMenu(); };
+
+    /* gacha */
+    if ($("btn-gacha")) $("btn-gacha").onclick = () => this._showGacha();
+    if ($("btn-pull-normal")) $("btn-pull-normal").onclick = () => this._pullGacha("normal");
+    if ($("btn-pull-10")) $("btn-pull-10").onclick = () => this._pullGacha("gold");
+    if ($("btn-back-gacha")) $("btn-back-gacha").onclick = () => this._showMenu();
 
     /* stage selection */
     $("btn-back-stages").onclick = () => this._showMenu();
@@ -1343,9 +1869,27 @@ class Game {
   _hideAll() {
     const screens = [this.ui.menu, this.ui.charSelect, this.ui.petScreen, this.ui.shop, this.ui.settings,
       this.ui.achievements, this.ui.daily, this.ui.leaderboard, this.ui.hud, this.ui.lvl, this.ui.pause, this.ui.end, this.ui.artifactScreen,
-      this.ui.stageScreen, this.ui.stageClearScreen];
+      this.ui.stageScreen, this.ui.stageClearScreen, this.ui.gachaScreen];
     for (const s of screens) if (s) s.classList.add("hidden");
     if (this.ui.joyZone) this.ui.joyZone.classList.add("hidden");
+  }
+
+  /* ── DOM ANNOUNCEMENTS ── */
+  _showAnnouncement(text, duration) {
+    const bar = this.ui.announceBar;
+    if (!bar) return;
+    // Reset animation by removing and re-adding the element
+    bar.classList.remove("hidden");
+    bar.textContent = text;
+    // Force reflow to restart animation
+    bar.style.animation = 'none';
+    bar.offsetHeight; // Trigger reflow
+    bar.style.animation = 'announceSlide 0.4s ease-out, announceFade 0.3s ease-out ' + (duration / 1000 - 0.3) + 's forwards';
+    // Hide after duration
+    if (this._announceTimeout) clearTimeout(this._announceTimeout);
+    this._announceTimeout = setTimeout(() => {
+      bar.classList.add("hidden");
+    }, duration);
   }
 
   /* ── STAGE SELECTION ── */
@@ -1445,10 +1989,19 @@ class Game {
 
     // Save progress
     const progress = loadStageProgress();
+    const prevStars = progress.stars[this.selectedStage] || 0;
     if (!progress.stars[this.selectedStage] || progress.stars[this.selectedStage] < stars) {
       progress.stars[this.selectedStage] = stars;
     }
     progress.totalStars = Object.values(progress.stars).reduce((a, b) => a + b, 0);
+
+    // Award gold spirit stones for first 3-star clear
+    if (stars === 3 && prevStars < 3) {
+      const gachaData = loadGachaData();
+      gachaData.goldSpiritStones += 5;
+      saveGachaData(gachaData);
+      this._showAnnouncement("🌟 3스타 클리어! 황금영혼석 +5", 4000);
+    }
 
     // Unlock next stage
     const stage = STAGES[this.selectedStage];
@@ -1463,12 +2016,101 @@ class Game {
     saveStageProgress(progress);
   }
 
+  /* ── GACHA SYSTEM ── */
+  _showGacha() {
+    this._hideAll();
+    this.state = "gacha";
+    this.ui.gachaScreen.classList.remove("hidden");
+    this._updateGachaUI();
+  }
+
+  _updateGachaUI() {
+    const gachaData = loadGachaData();
+    const ssEl = document.getElementById("spirit-stones");
+    const gssEl = document.getElementById("gold-spirit-stones");
+    if (ssEl) ssEl.textContent = gachaData.spiritStones;
+    if (gssEl) gssEl.textContent = gachaData.goldSpiritStones;
+    this._renderGhostInventory();
+  }
+
+  _renderGhostInventory() {
+    const list = document.getElementById("ghost-list");
+    if (!list) return;
+    list.innerHTML = "";
+    const gachaData = loadGachaData();
+
+    for (const [ghostId, ghost] of Object.entries(GHOSTS)) {
+      const count = gachaData.ghosts[ghostId] || 0;
+      if (count === 0) continue;
+
+      const item = document.createElement("div");
+      item.className = "ghost-item";
+      item.innerHTML = `
+        <div class="ghost-icon" style="background:${this._getRarityColor(ghost.rarity)}">${ghost.emoji}</div>
+        <div class="ghost-info">
+          <div class="ghost-name">${ghost.name}</div>
+          <div class="ghost-rarity ${ghost.rarity}">${ghost.rarity}</div>
+        </div>
+        <div class="ghost-count">x${count}</div>
+      `;
+      list.appendChild(item);
+    }
+  }
+
+  _getRarityColor(rarity) {
+    const colors = { N: "#888", R: "#4a90d9", SR: "#9b59b6", SSR: "#f39c12", UR: "#e74c3c" };
+    return colors[rarity] || "#888";
+  }
+
+  _pullGacha(type) {
+    const gachaData = loadGachaData();
+    const cost = type === "gold" ? GACHA_COST.gold : GACHA_COST.normal;
+
+    if (type === "normal" && gachaData.spiritStones < cost) {
+      this._showAnnouncement("영혼석이 부족합니다!", 3000);
+      return;
+    }
+    if (type === "gold" && gachaData.goldSpiritStones < cost) {
+      this._showAnnouncement("황금영혼석이 부족합니다!", 3000);
+      return;
+    }
+
+    // pullGacha handles cost deduction, inventory update, and saving
+    const result = pullGacha(type, 1);
+    if (!result) {
+      this._showAnnouncement("가챠 실패!", 3000);
+      return;
+    }
+    const pulled = result[0];
+
+    // Show result
+    this._showGachaResult(pulled);
+    this._updateGachaUI();
+  }
+
+  _showGachaResult(ghost) {
+    const resultDiv = document.getElementById("gacha-result");
+    const pulledDiv = document.getElementById("pulled-ghosts");
+    if (!resultDiv || !pulledDiv) return;
+
+    resultDiv.classList.remove("hidden");
+    pulledDiv.innerHTML = `
+      <div class="pulled-ghost ${ghost.rarity}">
+        <div class="ghost-emoji" style="background:${this._getRarityColor(ghost.rarity)}">${ghost.emoji}</div>
+        <div class="ghost-name">${ghost.name}</div>
+        <div class="ghost-rarity ${ghost.rarity}">${ghost.rarity}</div>
+        <div class="ghost-effect">${ghost.effect}</div>
+      </div>
+    `;
+  }
+
   _showMenu() {
     this._hideAll();
     this.state = "menu";
     this._updateMenuGold();
     showBestRecord();
     this.ui.menu.classList.remove("hidden");
+    this.ui.end.classList.remove("victory", "defeat");
     this.sfx.bgmStop();
   }
 
@@ -2007,6 +2649,22 @@ class Game {
     /* apply difficulty xp modifier */
     xpMul *= diff.xpMul;
 
+    /* Game mode specific modifiers */
+    if (this.gameMode === "endless") {
+      // Endless: faster enemy scaling, more gold
+      this._endlessMode = true;
+      goldMul *= 1.5;
+      xpMul *= 1.3;
+    } else if (this.gameMode === "timeAttack") {
+      // Time Attack: faster, less XP, focus on speed
+      xpMul *= 0.7;
+      this._timeAttackMode = true;
+    } else if (this.gameMode === "survival") {
+      // Survival: extreme scaling but more rewards
+      this._survivalMode = true;
+      spd *= 1.1;
+    }
+
     /* NG+ scaling */
     const ngLv = this.settings.ngPlus || 0;
     if (ngLv > 0) {
@@ -2101,6 +2759,8 @@ class Game {
     this.talismans = []; this.talismanT = 0;
     this.goldCoins = []; this.chests = [];
     this.windBursts = []; this.scytheSlashes = [];
+    // Ambient floating spirits
+    this.ambientSpirits = [];
     this.xp = 0; this.level = 1; this.xpNext = 10;
     this.elapsed = 0; this.killCount = 0; this.totalDmg = 0;
     this.goldEarned = 0; this.damageTaken = 0;
@@ -2126,8 +2786,15 @@ class Game {
     this.spawnTimer = -1; this.spawnInterval = 1500;
     this.eliteTimer = 0;
     this.bossSpawned = false; this.allureT = 0; this.allureSrc = null;
+    // Gameplay improvements: progressive scaling
+    this.gameTimeScale = 1.0; // Enemies scale over time
+    this.killStreak = 0; // Track consecutive kills
+    this.lastKillTime = 0; // For streak tracking
+    this.weaponTypesUsed = new Set(); // Track weapon diversity
     this.bladeAngle = 0; this.beadsAngle = 0; this.pendingLevelUps = 0;
     this.announcements = []; this.lastWaveIdx = -1;
+    // Reset VFX at game start
+    this.vfx.reset();
 
     this._hideAll();
     this.ui.hud.classList.remove("hidden");
@@ -2155,6 +2822,33 @@ class Game {
   /* ═══════════════════ UPDATE ═══════════════════ */
   _update(dt) {
     this.elapsed += dt;
+
+    // Spawn ambient spirits periodically (floating fireflies)
+    if (this.ambientSpirits.length < 15 && Math.random() < 0.02) {
+      this.ambientSpirits.push({
+        x: rand(50, W - 50), y: rand(50, H - 50),
+        vx: rand(-5, 5), vy: rand(-3, 3),
+        r: rand(2, 4), life: rand(8, 15), maxLife: rand(8, 15),
+        col: Math.random() > 0.5 ? "#ffd700" : "#00e5ff",
+        phase: rand(0, TAU),
+      });
+    }
+    // Update ambient spirits
+    this.ambientSpirits = this.ambientSpirits.filter(s => {
+      s.life -= dt;
+      s.x += s.vx * dt;
+      s.y += s.vy * dt;
+      s.vx += rand(-2, 2) * dt;
+      s.vy += rand(-2, 2) * dt;
+      s.vx = clamp(s.vx, -15, 15);
+      s.vy = clamp(s.vy, -10, 10);
+      // Keep in bounds
+      if (s.x < 20) s.vx += 5;
+      if (s.x > W - 20) s.vx -= 5;
+      if (s.y < 20) s.vy += 5;
+      if (s.y > H - 20) s.vy -= 5;
+      return s.life > 0;
+    });
 
     // BGM cooldown
     if (this._bgmCooldown > 0) this._bgmCooldown -= dt;
@@ -2274,6 +2968,8 @@ class Game {
     this.dmgNums = this.dmgNums.filter(d => {
       d.y -= 40 * dt; d.life -= dt; d.a = max(0, d.life / d.maxLife); return d.life > 0;
     });
+    /* vfx update */
+    this.vfx.update(dt);
     /* scythe slashes */
     if (this.scytheSlashes) this.scytheSlashes = this.scytheSlashes.filter(s => { s.t -= dt; return s.t > 0; });
     /* water zone enemy slow */
@@ -2290,6 +2986,9 @@ class Game {
     /* camera */
     const tx = this.p.x - this.sw / 2, ty = this.p.y - this.sh / 2;
     this.cam.x = lerp(this.cam.x, tx, 0.08); this.cam.y = lerp(this.cam.y, ty, 0.08);
+    // Add VFX screen shake to camera
+    this.cam.x += this.vfx.screenShake.x;
+    this.cam.y += this.vfx.screenShake.y;
     if (this.shakeT > 0) {
       this.cam.x += rand(-this.shakeI, this.shakeI);
       this.cam.y += rand(-this.shakeI, this.shakeI);
@@ -2336,7 +3035,9 @@ class Game {
   _spawnEnemies(dt) {
     const mf = this.elapsed / 60;
     const spdMul = this.diff.spawnMul;
-    // 난이도 스케일링: 시간에 따라 생성 속도加快
+    // Progressive difficulty scaling: becomes harder over time
+    // Each minute: enemies get slightly stronger and more numerous
+    this.gameTimeScale = 1 + mf * 0.05; // 5% per minute
     const difficultyScale = 1 + mf * 0.08; // 분당 8%씩 증가
     this.spawnInterval = max(200, (1500 - mf * 120) / spdMul / difficultyScale);
     this.spawnTimer -= dt * 1000; if (this.spawnTimer > 0) return;
@@ -2344,9 +3045,16 @@ class Game {
     /* hard cap total enemies to prevent frame drops */
     if (this.enemies.length >= 300) return;
     const count = min(15, 2 + floor(mf * 1.1 * spdMul * difficultyScale));
+
+    // Performance: skip spawn if too many objects
+    if (this.enemies.length + this.projs.length + this.gems.length + this.goldCoins.length > 500) return;
     let types = ["dokkaebi"];
     const spawnTbl = (this.mapDef && this.mapDef.spawnOverride) || SPAWN_TBL;
     for (const row of spawnTbl) if (this.elapsed >= row.t) types = row.types;
+    // Add boss waves at specific times for dramatic moments
+    if (this.elapsed >= BOSS_TIME && !this.bossSpawned && mf >= 5) {
+      this._spawnBoss();
+    }
     for (let i = 0; i < count; i++) {
       const etype = pick(types);
       if (etype === "wisp") {
@@ -2367,7 +3075,10 @@ class Game {
   }
 
   _spawnEnemy(type, x, y, mf) {
-    const def = ETYPES[type]; const hpS = 1 + mf * 0.12;
+    const def = ETYPES[type];
+    // Apply progressive scaling + difficulty + NG+
+    const progressiveScale = this.gameTimeScale || 1;
+    const hpS = (1 + mf * 0.12) * progressiveScale;
     const diff = this.diff;
     const ngHp = this._ngHpMul || 1, ngDmg = this._ngDmgMul || 1;
     this.enemies.push({
@@ -2446,6 +3157,11 @@ class Game {
       dotT: 0, dotDmg: 0, dotDur: 0,
     });
     this.sfx.boss(); this._shake(12, 0.5);
+    // Screen flash for boss spawn
+    this._flashScreen("boss", 0.3);
+    // VFX: boss spawn explosion
+    this.vfx.addParticle(x, y, { vx: rand(-150, 150), vy: rand(-150, 150), life: 1.2, count: 25, col: "#ffd700", r: rand(4, 8), grav: 80 });
+    this.vfx.addHitSpark(x, y, "#ffd700", 20);
     this.announcements.push({ text: "🦊 구미호 출현!", life: 3, maxLife: 3 });
   }
 
@@ -2484,6 +3200,11 @@ class Game {
         case "scythe": case "deathQuake": this._wpnScythe(w, lv, now, w.type); break;
         case "quake": this._wpnQuake(w, lv, now); break;
         case "trident": case "tidalStorm": this._wpnTrident(w, lv, now, w.type); break;
+        case "kunai": this._wpnKunai(w, lv, now); break;
+        case "dragonBreath": this._wpnDragonBreath(w, lv, now); break;
+        case "spiritChain": this._wpnSpiritChain(w, lv, now); break;
+        case "mirror": this._wpnMirror(w, lv, now); break;
+        case "bambooSpear": this._wpnBambooSpear(w, lv, now); break;
       }
     }
   }
@@ -2495,6 +3216,8 @@ class Game {
     for (let i = 0; i < lv.cnt; i++) {
       const a = this.bladeAngle + step * i;
       const bx = this.p.x + cos(a) * lv.rad, by = this.p.y + sin(a) * lv.rad;
+      // VFX: weapon trail
+      this.vfx.addWeaponTrail(bx, by, w.type, a);
       for (const e of this.enemies) {
         if (sqrt((bx - e.x) ** 2 + (by - e.y) ** 2) < e.r + 10 && !w.hitMap.has(e.id)) {
           w.hitMap.set(e.id, this.elapsed);
@@ -2510,6 +3233,9 @@ class Game {
     const sorted = [...this.enemies].sort((a, b) => dist(a, this.p) - dist(b, this.p));
     const targets = sorted.slice(0, lv.cnt); if (!targets.length) return;
     this.sfx.wpn(type);
+    // Weapon fire visual effect
+    this.vfx.addWeaponTrail(this.p.x, this.p.y, type, 0);
+    this.vfx.addParticle(this.p.x, this.p.y, { vx: rand(-20, 20), vy: rand(-20, 20), life: 0.3, count: 3, col: "#fff", r: rand(2, 4) });
     for (const tgt of targets) {
       const a = atan2(tgt.y - this.p.y, tgt.x - this.p.x);
       this.projs.push({
@@ -2524,6 +3250,8 @@ class Game {
     const cd = lv.cd * this.p.cdMul; if (now - w.lastFire < cd) return; w.lastFire = now;
     const inR = this.enemies.filter(e => dist(e, this.p) < 350); if (!inR.length) return;
     this.sfx.wpn("lightning");
+    // Lightning visual effect
+    this.vfx.addParticle(this.p.x, this.p.y, { vx: rand(-30, 30), vy: rand(-30, 30), life: 0.4, count: 5, col: "#00e5ff", r: rand(3, 6) });
     for (let i = 0; i < lv.st && inR.length > 0; i++) {
       const idx = rInt(0, inR.length - 1), e = inR[idx];
       this._damageEnemy(e, lv.dmg);
@@ -2548,6 +3276,8 @@ class Game {
   _wpnFrost(w, lv, now) {
     const cd = lv.cd * this.p.cdMul; if (now - w.lastFire < cd) return; w.lastFire = now;
     this.sfx.wpn("frost");
+    // Frost wave visual effect
+    this.vfx.addParticle(this.p.x, this.p.y, { vx: rand(-40, 40), vy: rand(-40, 40), life: 0.5, count: 8, col: "#80deea", r: rand(3, 6) });
     this.frostWaves.push({
       x: this.p.x, y: this.p.y, rad: 0, maxRad: lv.rad,
       dmg: lv.dmg, slow: lv.slow, dur: lv.dur, spd: 200, hitSet: new Set(),
@@ -2557,6 +3287,8 @@ class Game {
   _wpnCurseMist(w, lv, now) {
     const cd = lv.cd * this.p.cdMul; if (now - w.lastFire < cd) return; w.lastFire = now;
     this.sfx.wpn("curseMist");
+    // Curse mist visual effect
+    this.vfx.addParticle(this.p.x, this.p.y, { vx: rand(-30, 30), vy: rand(-30, 30), life: 0.6, count: 6, col: "#9c27b0", r: rand(4, 8) });
     for (let i = 0; i < lv.cnt; i++) {
       const a = rand(0, TAU), d = rand(40, 180);
       this.clouds.push({
@@ -2660,6 +3392,76 @@ class Game {
     }
   }
 
+  /* ── NEW WEAPONS ── */
+  _wpnKunai(w, lv, now) {
+    const cd = lv.cd * this.p.cdMul; if (now - w.lastFire < cd) return; w.lastFire = now;
+    const sorted = [...this.enemies].sort((a, b) => dist(a, this.p) - dist(b, this.p));
+    const targets = sorted.slice(0, lv.cnt); if (!targets.length) return;
+    this.sfx.wpn("blade");
+    for (const tgt of targets) {
+      const a = atan2(tgt.y - this.p.y, tgt.x - this.p.x);
+      this.projs.push({
+        x: this.p.x, y: this.p.y, vx: cos(a) * lv.spd, vy: sin(a) * lv.spd,
+        dmg: lv.dmg, r: 4, prc: lv.prc, col: "#90a4ae",
+        life: 2.5, maxLife: 2.5, type: "kunai", hitSet: new Set(),
+      });
+    }
+  }
+
+  _wpnDragonBreath(w, lv, now) {
+    const cd = lv.cd * this.p.cdMul; if (now - w.lastFire < cd) return; w.lastFire = now;
+    // Create fire zone around player
+    this.frostWaves.push({
+      x: this.p.x, y: this.p.y, rad: 0, maxRad: lv.rad,
+      spd: 80, dmg: lv.dmg, life: lv.dur, maxLife: lv.dur, hitSet: new Set(),
+    });
+    this.sfx.wpn("fire");
+    this.vfx.addParticle(this.p.x, this.p.y, { vx: rand(-100, 100), vy: rand(-100, 100), life: 0.8, count: 15, col: "#ff5722", r: rand(4, 8), grav: 0 });
+  }
+
+  _wpnSpiritChain(w, lv, now) {
+    const cd = lv.cd * this.p.cdMul; if (now - w.lastFire < cd) return; w.lastFire = now;
+    // Chain nearby enemies
+    const inR = this.enemies.filter(e => dist(e, this.p) < lv.rad);
+    if (inR.length < 2) return;
+    this.sfx.wpn("aura");
+    // Create chain effect between enemies
+    for (let i = 0; i < inR.length - 1 && i < lv.link - 1; i++) {
+      const e1 = inR[i], e2 = inR[i + 1];
+      this._damageEnemy(e1, lv.dmg);
+      this._damageEnemy(e2, lv.dmg);
+      // Visual chain
+      this.vfx.addParticle((e1.x + e2.x) / 2, (e1.y + e2.y) / 2, { vx: 0, vy: 0, life: 0.3, count: 5, col: "#9c27b0", r: 3 });
+    }
+  }
+
+  _wpnMirror(w, lv, now) {
+    const cd = lv.cd * this.p.cdMul; if (now - w.lastFire < cd) return; w.lastFire = now;
+    // Create mirror zones that reflect attacks
+    for (let i = 0; i < lv.reflect; i++) {
+      const a = rand(0, TAU), d = rand(80, 150);
+      this.talismans.push({
+        x: this.p.x + cos(a) * d, y: this.p.y + sin(a) * d,
+        type: "mirror", r: 15, life: 5, dmg: lv.dmg, rad: lv.rad,
+      });
+    }
+    this.sfx.wpn("frost");
+  }
+
+  _wpnBambooSpear(w, lv, now) {
+    const cd = lv.cd * this.p.cdMul; if (now - w.lastFire < cd) return; w.lastFire = now;
+    const sorted = [...this.enemies].sort((a, b) => dist(a, this.p) - dist(b, this.p));
+    const target = sorted[0]; if (!target) return;
+    this.sfx.wpn("blade");
+    const a = atan2(target.y - this.p.y, target.x - this.p.x);
+    // Long range piercing projectile
+    this.projs.push({
+      x: this.p.x, y: this.p.y, vx: cos(a) * 12, vy: sin(a) * 12,
+      dmg: lv.dmg, r: 5, prc: lv.pierce, col: "#7cb342",
+      life: 1.5, maxLife: 1.5, type: "bambooSpear", hitSet: new Set(), len: lv.len,
+    });
+  }
+
   /* ── PROJECTILES ── */
   _updateProjs(dt) {
     this.projs = this.projs.filter(p => {
@@ -2669,6 +3471,9 @@ class Game {
         if (p.hitSet.has(e.id)) continue;
         if (dist(p, e) < p.r + e.r) {
           p.hitSet.add(e.id); this._damageEnemy(e, p.dmg); this.sfx.hit();
+          // Projectile hit effect
+          this.vfx.addParticle(p.x, p.y, { vx: rand(-30, 30), vy: rand(-30, 30), life: 0.3, count: 4, col: p.col || "#fff", r: rand(2, 4) });
+          this.vfx.addHitSpark(p.x, p.y, p.col || "#fff", 6);
           /* tidalStorm freeze */
           if (p.frzChance && Math.random() < p.frzChance) {
             e.slowT = max(e.slowT, (p.frzDur || 1500) / 1000);
@@ -2687,10 +3492,23 @@ class Game {
       p.x += p.vx * dt * 60; p.y += p.vy * dt * 60; p.life -= dt;
       if (p.life <= 0) return false;
       if (dist(p, this.p) < p.r + this.p.r && this.p.invT <= 0) {
-        const raw = max(1, Math.round((p.dmg - this.p.armor) * (this._artDmgReduce || 1)));
+        let raw = max(1, Math.round((p.dmg - this.p.armor) * (this._artDmgReduce || 1)));
+        // Shield power-up reduces damage
+        if (this.activePowerups.shield) {
+          raw = Math.round(raw * (1 - this.activePowerups.shield.val));
+          this.vfx.addParticle(this.p.x, this.p.y, { vx: rand(-30, 30), vy: rand(-40, -20), life: 0.3, count: 5, col: "#42a5f5", r: rand(2, 4) });
+        }
         this.p.hp -= raw; this.p.invT = 0.5; this.p.flashT = 0.15; this.damageTaken += raw;
-        this.sfx.dmg(); this._shake(4, 0.1);
+        this.sfx.dmg();
+        // Screen flash on damage
+        this._flashScreen("damage", 0.12);
+        // VFX: player damage shake
+        this.vfx.shake(6, 0.85);
+        this._shake(4, 0.1);
         this._spawnParticles(this.p.x, this.p.y, 5, "#ef5350");
+        // VFX: damage number
+        this.vfx.addDamage(this.p.x, this.p.y - 20, raw, false, false);
+        this.vfx.addHitSpark(this.p.x, this.p.y, "#ef5350", 8);
         this.dmgNums.push({ x: this.p.x, y: this.p.y - 20, txt: "-" + raw, col: "#ef5350", life: 0.8, maxLife: 0.8, a: 1, big: true });
         if (this.p.hp <= 0) { this.p.hp = 0; this._tryReviveOrGameOver(); }
         return false;
@@ -2754,6 +3572,12 @@ class Game {
       const e = this.enemies[i];
       if (e.slowT > 0) e.slowT -= dt;
       const sm = e.slowT > 0 ? e.slowF : 1;
+      // Slow field power-up slows all nearby enemies
+      if (this.activePowerups.slowField && dist(e, this.p) < 200) {
+        const slowFactor = this.activePowerups.slowField.val;
+        const newSm = sm * (1 - slowFactor);
+        if (newSm < sm) e.slowT = 0.2; // Keep refreshing slow
+      }
       if (e.hitT > 0) e.hitT -= dt;
       e.stateT += dt;
 
@@ -2794,10 +3618,23 @@ class Game {
 
       /* collision with player */
       if (dist(e, this.p) < e.r + this.p.r && this.p.invT <= 0 && e.alpha > 0.6) {
-        const raw = max(1, Math.round((e.dmg - this.p.armor) * (this._artDmgReduce || 1)));
+        let raw = max(1, Math.round((e.dmg - this.p.armor) * (this._artDmgReduce || 1)));
+        // Shield power-up reduces damage
+        if (this.activePowerups.shield) {
+          raw = Math.round(raw * (1 - this.activePowerups.shield.val));
+          this.vfx.addParticle(this.p.x, this.p.y, { vx: rand(-30, 30), vy: rand(-40, -20), life: 0.3, count: 5, col: "#42a5f5", r: rand(2, 4) });
+        }
         this.p.hp -= raw; this.p.invT = 0.5; this.p.flashT = 0.15; this.damageTaken += raw;
-        this.sfx.dmg(); this._shake(6, 0.15);
+        this.sfx.dmg();
+        // Screen flash on damage
+        this._flashScreen("damage", 0.12);
+        // VFX: player damage shake (bigger for enemy collision)
+        this.vfx.shake(8, 0.85);
+        this._shake(6, 0.15);
         this._spawnParticles(this.p.x, this.p.y, 8, "#ef5350");
+        // VFX: damage number
+        this.vfx.addDamage(this.p.x, this.p.y - 20, raw, false, false);
+        this.vfx.addHitSpark(this.p.x, this.p.y, "#ef5350", 10);
         this.dmgNums.push({ x: this.p.x, y: this.p.y - 20, txt: "-" + raw, col: "#ef5350", life: 0.8, maxLife: 0.8, a: 1, big: true });
         if (this.p.hp <= 0) { this.p.hp = 0; this._tryReviveOrGameOver(); return; }
       }
@@ -3016,6 +3853,8 @@ class Game {
     if (this.artifact && this.artifact.effect === "bossDmg30" && (e.boss || e.elite)) dmg = Math.round(dmg * 1.3);
     let crit = false;
     const critChance = (this.artifact && this.artifact.effect === "critUp") ? 0.2 : 0.1;
+    // Crit boost power-up increases crit chance
+    if (this.activePowerups.critBoost) critChance += this.activePowerups.critBoost.val;
     if (Math.random() < critChance) { dmg = Math.round(dmg * 2); crit = true; }
     /* reaper passive: 5% chance to deal 25% max HP as bonus damage */
     if (this.charPassive === "executeChance" && !e.boss && Math.random() < 0.05) {
@@ -3023,16 +3862,37 @@ class Game {
       crit = true;
     }
     e.hp -= dmg; e.hitT = 0.1; this.totalDmg += dmg;
+    // Life steal power-up heals on hit
+    if (this.activePowerups.lifeSteal) {
+      const heal = Math.round(dmg * this.activePowerups.lifeSteal.val);
+      this.p.hp = min(this.p.hp + heal, this.p.maxHp);
+      if (heal > 0) {
+        this.vfx.addParticle(this.p.x, this.p.y, { vx: rand(-20, 20), vy: rand(-30, -10), life: 0.4, count: 3, col: "#c62828", r: rand(2, 4) });
+      }
+    }
     /* cap dmg numbers for performance */
     if (this.dmgNums.length < 80) {
       const col = crit ? "#ffd93d" : "#fff";
       this.dmgNums.push({ x: e.x + rand(-10, 10), y: e.y - e.r - 5, txt: dmg.toString(), col, life: 0.6, maxLife: 0.6, a: 1, big: crit });
     }
+    // VFX damage number (new system)
+    this.vfx.addDamage(e.x, e.y - e.r, dmg, crit, false);
+    // VFX hit sparks
+    this.vfx.addHitSpark(e.x, e.y, crit ? "#ffd700" : e.col, crit ? 12 : 5);
     this._spawnParticles(e.x, e.y, crit ? 6 : 3, e.col);
+    // Extra screen shake on critical hits for impact
+    if (crit) { this.vfx.shake(3, 0.1); }
   }
 
   _onEnemyKill(e) {
     this.killCount++;
+    // Track kill streak for bonus
+    if (this.elapsed - this.lastKillTime < 2) {
+      this.killStreak++;
+    } else {
+      this.killStreak = 1;
+    }
+    this.lastKillTime = this.elapsed;
 
     /* ── COMBO SYSTEM ── */
     this.combo.count++;
@@ -3051,15 +3911,36 @@ class Game {
     } else if (c >= 5) {
       this.comboMultiplier = { dmg: 1.1, gold: 1, xp: 1 };
     }
+    // Play combo sound at milestones
+    if (c === 5 || c === 10 || c === 20 || c === 50) {
+      this.sfx.combo();
+      // Screen shake at high combos
+      if (c >= 20) this.vfx.shake(c >= 50 ? 6 : 4, 0.2);
+    }
     this._spawnComboText(c);
     this._updateComboUI();
 
     if (e.elite || e.boss) {
       this.eliteKillCount = (this.eliteKillCount || 0) + 1;
+      // Award spirit stones for elite/boss kills
+      const gachaData = loadGachaData();
+      gachaData.spiritStones += e.boss ? 20 : 5;
+      saveGachaData(gachaData);
       // Enhanced kill effects for elite/boss
       this.sfx.kill();
       this._spawnParticles(e.x, e.y, e.boss ? 35 : 20, e.boss ? "#ffd700" : "#ff9800");
-      // Screen shake
+      // VFX: kill particles
+      this.vfx.addParticle(e.x, e.y, {
+        vx: rand(-100, 100), vy: rand(-150, -50),
+        life: 0.8, count: e.boss ? 20 : 10,
+        col: e.boss ? "#ffd700" : "#ff9800", r: rand(3, 8), grav: 200
+      });
+      // VFX: kill damage number
+      this.vfx.addDamage(e.x, e.y - e.r - 20, 0, false, true);
+      // VFX: blood splat
+      this.vfx.addBloodSplat(e.x, e.y, e.boss ? 3 : 2);
+      // Screen shake (using VFX)
+      this.vfx.shake(e.boss ? 12 : 6, 0.85);
       this._shake(e.boss ? 10 : 5, e.boss ? 0.3 : 0.15);
       // Ring effect for boss kills
       if (e.boss) {
@@ -3068,7 +3949,16 @@ class Game {
     } else {
       this.sfx.kill();
       this._spawnParticles(e.x, e.y, 12, e.col);
+      // VFX: kill particles
+      this.vfx.addParticle(e.x, e.y, {
+        vx: rand(-80, 80), vy: rand(-100, -30),
+        life: 0.5, count: 5,
+        col: e.col, r: rand(2, 5), grav: 150
+      });
+      // VFX: blood splat
+      this.vfx.addBloodSplat(e.x, e.y, 1);
       // Combo shake for high combos
+      if (this.combo.count >= 20) this.vfx.shake(4, 0.9);
       if (this.combo.count >= 20) this._shake(3, 0.1);
     }
     /* artifact: kill heal */
@@ -3153,6 +4043,12 @@ class Game {
           this.runStats.goldEarnedFromPet = (this.runStats.goldEarnedFromPet || 0) + earned;
         }
         this.sfx.coin();
+        // VFX: gold sparkle
+        this.vfx.addParticle(c.x, c.y, {
+          vx: rand(-40, 40), vy: rand(-50, -20),
+          life: 0.5, count: 4,
+          col: "#ffd700", r: rand(2, 5)
+        });
         this.dmgNums.push({ x: this.p.x, y: this.p.y - 30, txt: "+" + earned + "💰", col: "#ffd93d", life: 0.6, maxLife: 0.6, a: 1, big: false });
         return false;
       }
@@ -3167,6 +4063,10 @@ class Game {
       if (dist(ch, this.p) < ch.r + this.p.r) {
         this.sfx.chest();
         this._spawnParticles(ch.x, ch.y, 20, "#ffd93d");
+        // Chest open effect
+        this.vfx.addParticle(ch.x, ch.y, { vx: rand(-60, 60), vy: rand(-80, -40), life: 0.8, count: 15, col: "#ffd700", r: rand(3, 6), grav: 100 });
+        this.vfx.addHitSpark(ch.x, ch.y, "#ffd700", 12);
+        this._flashScreen("heal", 0.15);
         /* reward */
         if (ch.type === "boss") {
           /* boss chest: big gold + heal + vacuum gems */
@@ -3216,10 +4116,29 @@ class Game {
         this.xp += gainedXp;
         this.runStats.xpGained = (this.runStats.xpGained || 0) + gainedXp;
         this.sfx.xp();
+        // VFX: XP pickup sparkle
+        this.vfx.addParticle(g.x, g.y, {
+          vx: rand(-30, 30), vy: rand(-40, -20),
+          life: 0.4, count: 3,
+          col: g.val >= 10 ? "#ffab00" : "#ffd54f", r: rand(2, 4)
+        });
         while (this.xp >= this.xpNext) {
           this.xp -= this.xpNext; this.level++;
-          this.xpNext = Math.round(10 * Math.pow(1.18, this.level - 1));
+          // Improved XP curve: slightly faster early, sustainable late
+          this.xpNext = Math.round(8 * Math.pow(1.15, this.level - 1));
           this.pendingLevelUps++; this.sfx.lvl();
+          // Screen flash on level up
+          this._flashScreen("levelup", 0.2);
+          // Update level display and trigger animation
+          this.ui.lvTxt.textContent = "Lv " + this.level;
+          const xpBar = document.getElementById("xp-bar");
+          if (xpBar) { xpBar.classList.add("leveling"); setTimeout(() => xpBar.classList.remove("leveling"), 600); }
+          // VFX: level up celebration
+          this.vfx.addParticle(this.p.x, this.p.y - 30, {
+            vx: rand(-60, 60), vy: rand(-80, -40),
+            life: 0.8, count: 15,
+            col: "#ffd700", r: rand(3, 6), grav: 150
+          });
         }
         return false;
       }
@@ -3264,6 +4183,12 @@ class Game {
       }
     }
 
+    // Apply passive power-up effects
+    // Life steal: heal on enemy kill
+    // Crit boost: handled in _damageEnemy
+    // Shield: reduces incoming damage
+    // Slow field: slows nearby enemies
+
     // Update power-up drops (movement and collection)
     this.powerupDrops = this.powerupDrops.filter(p => {
       p.life -= dt;
@@ -3293,6 +4218,8 @@ class Game {
 
     this.sfx.talisman();
     this._spawnParticles(this.p.x, this.p.y, 8, def.col);
+    // Small screen flash for powerup pickup
+    this.vfx.shake(2, 0.15);
 
     if (def.effect === 'heal') {
       this.p.hp = min(this.p.hp + def.val, this.p.maxHp);
@@ -3462,7 +4389,10 @@ class Game {
       this.weapons = this.weapons.filter(w => w.type !== opt.ingA && w.type !== opt.ingB);
       this._addWeapon(opt.type);
       this.sfx.synth(); this._shake(8, 0.3);
+      this._flashScreen("levelup", 0.25);
       this._spawnParticles(this.p.x, this.p.y, 25, "#ffd54f");
+      // Evolution burst effect
+      this.vfx.addParticle(this.p.x, this.p.y, { vx: rand(-80, 80), vy: rand(-80, 80), life: 1.0, count: 20, col: "#ffd700", r: rand(4, 8), grav: 50 });
       /* track evolution for unlock */
       if (!this.cStats.evolvedWeapons) this.cStats.evolvedWeapons = [];
       if (!this.cStats.evolvedWeapons.includes(opt.type)) this.cStats.evolvedWeapons.push(opt.type);
@@ -3513,7 +4443,7 @@ class Game {
       this._shake(10, 0.5);
       this._spawnParticles(this.p.x, this.p.y, 30, "#ffd93d");
       this.announcements.push({ text: "💫 부활!", life: 3, maxLife: 3 });
-      this.sfx.synth();
+      this.sfx.revive();
       /* kill nearby enemies */
       for (const e of this.enemies) {
         if (dist(e, this.p) < 150) { e.hp -= 9999; }
@@ -3528,6 +4458,8 @@ class Game {
     this.sfx.playBgm("final");
     this.ui.endTitle.textContent = "게임 오버";
     this.ui.endTitle.style.color = "#ef5350";
+    this.ui.end.classList.add("defeat");
+    this.ui.end.classList.remove("victory");
     this.isNewRecord = saveScore({
       time: this.elapsed, kills: this.killCount, level: this.level,
       dmg: this.totalDmg, win: false, date: Date.now(),
@@ -3557,6 +4489,8 @@ class Game {
 
     this.ui.endTitle.textContent = "🎉 퇴마 완료!";
     this.ui.endTitle.style.color = "#ffd93d";
+    this.ui.end.classList.add("victory");
+    this.ui.end.classList.remove("defeat");
     this.isNewRecord = saveScore({
       time: this.elapsed, kills: this.killCount, level: this.level,
       dmg: this.totalDmg, win: true, date: Date.now(),
@@ -3606,6 +4540,17 @@ class Game {
     /* save gold */
     this.gold += this.goldEarned;
     saveGold(this.gold);
+
+    /* award spirit stones */
+    const gachaData = loadGachaData();
+    let spiritEarned = 10; // base reward
+    if (won) {
+      spiritEarned += 30; // win bonus
+      if (this.selectedStage) spiritEarned += 20; // stage clear bonus
+    }
+    spiritEarned += Math.floor(this.killCount / 5); // kill bonus
+    gachaData.spiritStones += spiritEarned;
+    saveGachaData(gachaData);
 
     /* update cumulative stats */
     this.cStats.totalKills += this.killCount;
@@ -3913,6 +4858,16 @@ class Game {
 
   /* ── FX ── */
   _shake(i, d) { this.shakeI = i; this.shakeT = d; }
+  _flashScreen(type, duration = 0.15) {
+    const flash = this.ui.screenFlash;
+    if (!flash) return;
+    flash.className = type;
+    flash.style.opacity = '1';
+    clearTimeout(this._flashTimeout);
+    this._flashTimeout = setTimeout(() => {
+      flash.style.opacity = '0';
+    }, duration * 1000);
+  }
   _spawnParticles(x, y, cnt, col) {
     /* cap particles for performance on high enemy counts */
     const budget = 400;
@@ -3989,6 +4944,25 @@ class Game {
     if (this.ui.comboDisplay && this.combo.count > 0) {
       this._updateComboUI();
     }
+    // Update boss health bar
+    const boss = this.enemies && this.enemies.find(e => e.boss);
+    if (this.ui.bossHpWrap && this.ui.bossHpBar) {
+      if (boss) {
+        this.ui.bossHpWrap.classList.remove("hidden");
+        const bossHpPercent = boss.hp / boss.maxHp;
+        this.ui.bossHpBar.style.width = (bossHpPercent * 100) + "%";
+        // Update boss HP bar color based on remaining health
+        if (bossHpPercent < 0.3) {
+          this.ui.bossHpBar.style.background = "linear-gradient(90deg, #f44336, #ef5350)";
+        } else if (bossHpPercent < 0.6) {
+          this.ui.bossHpBar.style.background = "linear-gradient(90deg, #ff9800, #ffb74d)";
+        } else {
+          this.ui.bossHpBar.style.background = "linear-gradient(90deg, #f06292, #e91e63)";
+        }
+      } else {
+        this.ui.bossHpWrap.classList.add("hidden");
+      }
+    }
   }
 
   /* ═══════════════════ RENDER ═══════════════════ */
@@ -3998,7 +4972,6 @@ class Game {
     if (this.state === "menu" || this.state === "charSelect" || this.state === "shop" || this.state === "settings") return;
     // Skip rendering if game objects not initialized yet
     if (!this.cam || !this.p) return;
-    console.log("[Render] state:", this.state, "sw:", sw, "sh:", sh, "p:", this.p ? "exists" : "null", "enemies:", this.enemies ? this.enemies.length : 0);
 
     const cx = this.cam.x, cy = this.cam.y;
     const toX = x => x - cx, toY = y => y - cy;
@@ -4070,6 +5043,16 @@ class Game {
     c.strokeStyle = "rgba(200,80,80,.25)"; c.lineWidth = 3;
     c.strokeRect(toX(0), toY(0), W, H);
 
+    /* ── atmospheric vignette ── */
+    c.save();
+    const vx = toX(this.p.x), vy = toY(this.p.y);
+    const vGrad = c.createRadialGradient(vx, vy, min(W, H) * 0.3, vx, vy, max(W, H) * 0.8);
+    vGrad.addColorStop(0, "rgba(0,0,0,0)");
+    vGrad.addColorStop(0.5, "rgba(0,0,0,0.15)");
+    vGrad.addColorStop(1, "rgba(0,0,0,0.5)");
+    c.fillStyle = vGrad; c.fillRect(0, 0, cw, ch);
+    c.restore();
+
     /* ── allure line ── */
     if (this.allureT > 0 && this.allureSrc) {
       c.save(); c.globalAlpha = this.allureT / 2 * 0.3; c.strokeStyle = "#f06292"; c.lineWidth = 2;
@@ -4130,15 +5113,22 @@ class Game {
       if (sx < -30 || sx > sw + 30 || sy < -30 || sy > sh + 30) continue;
       c.save();
       const pulse = 0.8 + sin(this.elapsed * 4) * 0.2;
+      const bounce = sin(this.elapsed * 3) * 3;
       c.globalAlpha = ch.life < 3 ? ch.life / 3 : 1;
       const chCol = ch.type === "boss" ? "#ffd93d" : "#ffcc80";
-      c.fillStyle = chCol; c.shadowColor = chCol; c.shadowBlur = 14 * pulse;
-      /* chest shape */
-      c.fillRect(sx - 10, sy - 7, 20, 14);
+      // Glow effect
+      c.fillStyle = chCol; c.shadowColor = chCol; c.shadowBlur = 16 * pulse;
+      /* chest body */
+      c.fillRect(sx - 12, sy - 8 + bounce, 24, 16);
+      /* chest lid */
       c.fillStyle = ch.type === "boss" ? "#ff8f00" : "#a1887f";
-      c.fillRect(sx - 10, sy - 7, 20, 4);
-      c.fillStyle = "#fff"; c.font = "bold 8px sans-serif"; c.textAlign = "center";
-      c.fillText(ch.type === "boss" ? "★" : "?", sx, sy + 5);
+      c.fillRect(sx - 12, sy - 8 + bounce, 24, 5);
+      /* decorative stripe */
+      c.fillStyle = ch.type === "boss" ? "#ff6f00" : "#8d6e63";
+      c.fillRect(sx - 12, sy - 2 + bounce, 24, 2);
+      /* icon */
+      c.fillStyle = "#fff"; c.font = "bold 10px sans-serif"; c.textAlign = "center";
+      c.fillText(ch.type === "boss" ? "★" : "?", sx, sy + 6 + bounce);
       c.restore();
     }
 
@@ -4195,10 +5185,14 @@ class Game {
     for (const pet of this.pets) {
       const sx = toX(pet.x), sy = toY(pet.y);
       const icons = { foxPet: "🦊", ghostPet: "👻", spiritBird: "🐦", dragonSalamander: "🐉" };
+      const petGlow = { foxPet: "#ff8a65", ghostPet: "#b39ddb", spiritBird: "#4db6ac", dragonSalamander: "#ff7043" };
       c.save();
-      c.shadowColor = "#fff"; c.shadowBlur = 10;
-      c.font = "18px sans-serif"; c.textAlign = "center";
-      c.fillText(icons[pet.type] || "?", sx, sy + 6);
+      // Floating animation
+      const floatY = sin(this.elapsed * 3 + pet.x) * 3;
+      // Glow effect based on pet type
+      c.shadowColor = petGlow[pet.type] || "#fff"; c.shadowBlur = 15;
+      c.font = "20px sans-serif"; c.textAlign = "center";
+      c.fillText(icons[pet.type] || "?", sx, sy + 6 + floatY);
       c.restore();
     }
 
@@ -4381,16 +5375,34 @@ class Game {
     /* ── enemy projectiles ── */
     for (const p of this.enemyProjs) {
       const sx = toX(p.x), sy = toY(p.y);
-      c.save(); c.fillStyle = p.col; c.shadowColor = p.col; c.shadowBlur = 6;
-      c.beginPath(); c.arc(sx, sy, p.r, 0, TAU); c.fill(); c.restore();
+      c.save();
+      // Danger glow
+      c.shadowColor = p.col; c.shadowBlur = 10;
+      // Warning outer ring
+      c.globalAlpha = 0.3;
+      c.strokeStyle = p.col; c.lineWidth = 1.5;
+      c.beginPath(); c.arc(sx, sy, p.r + 3, 0, TAU); c.stroke();
+      // Main projectile
+      c.globalAlpha = 1;
+      c.beginPath(); c.arc(sx, sy, p.r, 0, TAU); c.fillStyle = p.col; c.fill();
+      c.restore();
     }
 
     /* ── player projectiles ── */
     for (const p of this.projs) {
       const sx = toX(p.x), sy = toY(p.y);
       if (sx < -20 || sx > sw + 20 || sy < -20 || sy > sh + 20) continue;
-      c.save(); c.shadowColor = p.col; c.shadowBlur = 10;
+      c.save();
+      // Glow effect
+      c.shadowColor = p.col; c.shadowBlur = 12;
+      // Main projectile
       c.beginPath(); c.arc(sx, sy, p.r, 0, TAU); c.fillStyle = p.col; c.fill();
+      // Inner bright core
+      c.beginPath(); c.arc(sx, sy, p.r * 0.5, 0, TAU); c.fillStyle = "#fff"; c.fill();
+      // Trail effect
+      c.globalAlpha = 0.5;
+      c.beginPath(); c.arc(sx - p.vx * 0.05, sy - p.vy * 0.05, p.r * 0.8, 0, TAU);
+      c.fillStyle = p.col; c.fill();
       c.restore();
     }
 
@@ -4484,6 +5496,18 @@ class Game {
     }
     c.globalAlpha = 1;
 
+    /* ── ambient spirits (fireflies) ── */
+    for (const s of this.ambientSpirits) {
+      const pulse = 0.5 + sin(this.elapsed * 3 + s.phase) * 0.5;
+      c.globalAlpha = pulse * (s.life / s.maxLife) * 0.7;
+      c.fillStyle = s.col;
+      c.shadowColor = s.col;
+      c.shadowBlur = 12;
+      c.beginPath(); c.arc(toX(s.x), toY(s.y), s.r * pulse, 0, TAU); c.fill();
+      c.shadowBlur = 0;
+    }
+    c.globalAlpha = 1;
+
     /* ── player ── */
     {
       const sx = toX(this.p.x), sy = toY(this.p.y); c.save();
@@ -4514,6 +5538,22 @@ class Game {
         c.beginPath(); c.arc(sx, sy, this.p.r + 8, 0, TAU); c.stroke();
         c.restore();
       }
+      if (this.activePowerups.shield) {
+        c.save();
+        c.globalAlpha = 0.3 + sin(this.elapsed * 4) * 0.15;
+        c.strokeStyle = "#42a5f5"; c.lineWidth = 4;
+        c.beginPath(); c.arc(sx, sy, this.p.r + 12, 0, TAU); c.stroke();
+        c.globalAlpha = 0.15; c.fillStyle = "#42a5f5";
+        c.beginPath(); c.arc(sx, sy, this.p.r + 12, 0, TAU); c.fill();
+        c.restore();
+      }
+      if (this.activePowerups.critBoost) {
+        c.save();
+        c.globalAlpha = 0.4 + sin(this.elapsed * 5) * 0.2;
+        c.strokeStyle = "#ff7043"; c.lineWidth = 2;
+        c.beginPath(); c.arc(sx, sy, this.p.r + 5, 0, TAU); c.stroke();
+        c.restore();
+      }
 
       /* headband - color varies by character */
       const hbColors = { exorcist: "#d32f2f", shaman: "#7b1fa2", taoist: "#1565c0", hunter: "#2e7d32", monk: "#ff6f00", foxSpirit: "#f06292", reaper: "#6a1b9a", mountainGod: "#5d4037", seaDiver: "#0277bd" };
@@ -4539,17 +5579,86 @@ class Game {
     }
     c.globalAlpha = 1;
 
+    /* ── VFX: particles ── */
+    for (const p of this.vfx.particles) {
+      const alpha = p.fade ? p.life / p.maxLife : 1;
+      c.globalAlpha = alpha;
+      c.fillStyle = p.col;
+      c.beginPath(); c.arc(toX(p.x), toY(p.y), p.r * (p.life / p.maxLife), 0, TAU); c.fill();
+    }
+
+    /* ── VFX: hit sparks ── */
+    for (const s of this.vfx.hitSparks) {
+      const alpha = s.life / s.maxLife;
+      c.globalAlpha = alpha;
+      c.fillStyle = s.col;
+      c.beginPath(); c.arc(toX(s.x), toY(s.y), s.r * alpha, 0, TAU); c.fill();
+    }
+
+    /* ── VFX: weapon trails ── */
+    for (const t of this.vfx.weaponTrails) {
+      const alpha = t.life / t.maxLife;
+      c.globalAlpha = alpha * 0.6;
+      c.strokeStyle = t.col;
+      c.lineWidth = 4 * alpha;
+      c.lineCap = "round";
+      c.beginPath();
+      const tx = toX(t.x), ty = toY(t.y);
+      const tailX = tx - cos(t.angle) * t.len;
+      const tailY = ty - sin(t.angle) * t.len;
+      c.moveTo(tailX, tailY); c.lineTo(tx, ty); c.stroke();
+      c.lineCap = "butt";
+    }
+
+    /* ── VFX: damage numbers (new system) ── */
+    for (const d of this.vfx.damageNumbers) {
+      const alpha = d.life / d.maxLife;
+      const scale = d.scale * (1 + (1 - alpha) * 0.2);
+      c.globalAlpha = alpha;
+      c.font = `bold ${16 * scale}px 'Segoe UI',sans-serif`;
+      c.textAlign = "center";
+      c.save();
+      c.translate(toX(d.x), toY(d.y));
+      c.rotate(d.rotation * (1 - alpha));
+      if (d.isCrit) {
+        c.shadowColor = d.isKill ? "#ff1744" : "#ff9800";
+        c.shadowBlur = 15;
+      }
+      c.fillStyle = d.isKill ? "#ff1744" : (d.isCrit ? "#ff9800" : "#fff");
+      c.fillText(d.dmg.toString(), 0, 0);
+      c.restore();
+    }
+
+    /* ── VFX: blood splats ── */
+    for (const b of this.vfx.bloodSplats) {
+      const alpha = min(1, b.life / 0.5) * 0.4;
+      c.globalAlpha = alpha;
+      c.fillStyle = "#b71c1c";
+      c.beginPath();
+      c.arc(toX(b.x), toY(b.y), b.size * 3, 0, TAU); c.fill();
+    }
+
+    c.globalAlpha = 1;
+
     /* ── minimap ── */
     this._renderMinimap(c);
 
     /* ── mobile joystick ── */
     if (this.isMobile && this.touch.active) {
       const jx = this.touch.ox, jy = this.touch.oy;
-      c.save(); c.globalAlpha = 0.2; c.strokeStyle = "#fff"; c.lineWidth = 2;
+      c.save();
+      // Outer ring glow
+      c.globalAlpha = 0.1; c.fillStyle = "#6366f1"; c.beginPath(); c.arc(jx, jy, 70, 0, TAU); c.fill();
+      // Outer ring
+      c.globalAlpha = 0.25; c.strokeStyle = "rgba(255,255,255,0.5)"; c.lineWidth = 2;
       c.beginPath(); c.arc(jx, jy, 60, 0, TAU); c.stroke();
+      // Inner fill
       c.globalAlpha = 0.15; c.fillStyle = "#fff"; c.beginPath(); c.arc(jx, jy, 60, 0, TAU); c.fill();
-      c.globalAlpha = 0.45; c.fillStyle = "#ffd54f";
-      c.beginPath(); c.arc(jx + (this.touch.kx || 0), jy + (this.touch.ky || 0), 16, 0, TAU); c.fill();
+      // Joystick knob with glow
+      c.globalAlpha = 0.6; c.fillStyle = "#ffd54f";
+      c.shadowColor = "#ffd54f"; c.shadowBlur = 15;
+      c.beginPath(); c.arc(jx + (this.touch.kx || 0), jy + (this.touch.ky || 0), 18, 0, TAU); c.fill();
+      c.shadowBlur = 0;
       c.restore();
     }
 
@@ -4567,21 +5676,32 @@ class Game {
   }
 
   _renderMinimap(c) {
-    const mw = 100, mh = 100, mx = this.sw - mw - 12, my = this.sh - mh - 12;
+    const mw = 110, mh = 110, mx = this.sw - mw - 12, my = this.sh - mh - 12;
     const sx = mw / W, sy = mh / H;
-    c.fillStyle = "rgba(0,0,0,.45)"; c.fillRect(mx, my, mw, mh);
-    c.strokeStyle = "rgba(255,255,255,.15)"; c.lineWidth = 1; c.strokeRect(mx, my, mw, mh);
+    // Enhanced minimap with border and glow
+    c.fillStyle = "rgba(0,0,0,.6)"; c.fillRect(mx, my, mw, mh);
+    c.strokeStyle = "rgba(99,102,241,.4)"; c.lineWidth = 2; c.strokeRect(mx, my, mw, mh);
+    // Grid lines
+    c.strokeStyle = "rgba(255,255,255,.05)"; c.lineWidth = 1;
+    for (let i = 0; i <= 4; i++) {
+      c.beginPath(); c.moveTo(mx + mw * i / 4, my); c.lineTo(mx + mw * i / 4, my + mh); c.stroke();
+      c.beginPath(); c.moveTo(mx, my + mh * i / 4); c.lineTo(mx + mw, my + mh * i / 4); c.stroke();
+    }
     c.fillStyle = "rgba(239,83,80,.6)";
     for (const e of this.enemies) {
-      const s = e.boss ? 4 : (e.elite ? 3 : 2);
-      if (e.elite) c.fillStyle = "rgba(255,217,61,.8)";
-      else if (e.boss) c.fillStyle = "rgba(240,98,146,.8)";
+      const s = e.boss ? 5 : (e.elite ? 4 : 2.5);
+      if (e.elite) c.fillStyle = "rgba(255,217,61,.9)";
+      else if (e.boss) c.fillStyle = "rgba(240,98,146,.9)";
       else c.fillStyle = "rgba(239,83,80,.6)";
       c.fillRect(mx + e.x * sx - s / 2, my + e.y * sy - s / 2, s, s);
     }
-    c.fillStyle = "#fafafa"; c.beginPath();
-    c.arc(mx + this.p.x * sx, my + this.p.y * sy, 3, 0, TAU); c.fill();
-    c.strokeStyle = "rgba(255,255,255,.25)";
+    // Player dot with glow
+    c.fillStyle = "#fff"; c.beginPath();
+    c.arc(mx + this.p.x * sx, my + this.p.y * sy, 4, 0, TAU); c.fill();
+    c.fillStyle = "rgba(99,102,241,.3)"; c.beginPath();
+    c.arc(mx + this.p.x * sx, my + this.p.y * sy, 6, 0, TAU); c.fill();
+    // Viewport rectangle
+    c.strokeStyle = "rgba(255,255,255,.4)";
     c.strokeRect(mx + this.cam.x * sx, my + this.cam.y * sy, this.sw * sx, this.sh * sy);
   }
 }

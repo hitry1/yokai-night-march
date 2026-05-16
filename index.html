@@ -12,7 +12,20 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+  <!-- Loading Screen -->
+  <div id="loading-screen">
+    <div class="loading-title">요괴야행</div>
+    <div class="loading-bar-wrap">
+      <div class="loading-bar" id="loading-bar"></div>
+    </div>
+    <div class="loading-text">로딩 중...</div>
+    <div class="loading-version">v3.0 Final</div>
+  </div>
+
   <canvas id="gc"></canvas>
+
+  <!-- Screen Flash Overlay -->
+  <div id="screen-flash"></div>
 
   <!-- HUD -->
   <div id="hud" class="hidden">
@@ -37,6 +50,12 @@
       <span id="diff-badge"></span>
     </div>
     <div id="weapon-slots"></div>
+    <div id="boss-hp-wrap" class="boss-hp-wrap hidden">
+      <div class="boss-hp-label">🦊 보스</div>
+      <div class="bar-wrap" id="boss-hp-bar-wrap">
+        <div class="bar-fill" id="boss-hp-bar"></div>
+      </div>
+    </div>
     <button id="btn-sound" class="sound-btn" aria-label="음소거">🔊</button>
     <div id="volume-panel" class="volume-panel hidden">
       <div class="vol-row">
@@ -64,6 +83,7 @@
       <button id="btn-daily" class="btn btn-primary" style="background:linear-gradient(135deg,#ff6b6b,#ff9800);margin-top:8px;">🎯 일일 챌린지</button>
       <div class="menu-btns">
         <button id="btn-shop" class="btn btn-secondary">🏪 영구 강화</button>
+        <button id="btn-gacha" class="btn btn-secondary">🎰 유령 가챠</button>
         <button id="btn-achievements" class="btn btn-secondary">🏆 업적</button>
         <button id="btn-leaderboard" class="btn btn-secondary">📊 리더보드</button>
         <button id="btn-settings" class="btn btn-secondary">⚙️ 설정</button>
@@ -129,6 +149,33 @@
       <div id="chapter-tabs" class="chapter-tabs"></div>
       <div id="stage-list" class="stage-list"></div>
       <button id="btn-back-stages" class="btn btn-secondary">← 돌아가기</button>
+    </div>
+  </div>
+
+  <!-- Gacha Screen -->
+  <div id="screen-gacha" class="ov hidden">
+    <div class="ov-box wide-box">
+      <h2 class="screen-title">🎰 유령 가챠</h2>
+      <div id="gacha-currency" class="gacha-currency">
+        <span>🪨 영혼석: <span id="spirit-stones">500</span></span>
+        <span>💎 황금영혼석: <span id="gold-spirit-stones">0</span></span>
+      </div>
+      <div class="gacha-buttons">
+        <button id="btn-pull-normal" class="btn btn-primary">
+          🪨 1회 뽑기 (100)
+        </button>
+        <button id="btn-pull-10" class="btn btn-primary" style="background:linear-gradient(135deg,#ff6b6b,#ff9800)">
+          🪨 10회 뽑기 (1,000)
+        </button>
+      </div>
+      <div id="gacha-result" class="gacha-result hidden">
+        <div id="pulled-ghosts" class="pulled-ghosts"></div>
+      </div>
+      <div id="ghost-inventory" class="ghost-inventory">
+        <h3>보유 유령</h3>
+        <div id="ghost-list" class="ghost-list"></div>
+      </div>
+      <button id="btn-back-gacha" class="btn btn-secondary">← 돌아가기</button>
     </div>
   </div>
 
