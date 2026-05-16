@@ -4990,42 +4990,8 @@ class Game {
   _render() {
     const c = this.ctx, sw = this.sw, sh = this.sh;
     c.clearRect(0, 0, sw, sh);
-    // Debug: verify canvas is drawing
-    c.fillStyle = "#1a1a2e";
-    c.fillRect(0, 0, sw, sh);
-    if (this.state === "menu" || this.state === "charSelect" || this.state === "shop" || this.state === "settings") {
-      // Show simple background for menu state
-      return;
-    }
-    // Skip rendering if game objects not initialized yet
-    if (!this.cam || !this.p) {
-      console.log("[Render] Skipping - cam or p not initialized");
-      // Debug: draw test squares to verify canvas works
-      c.fillStyle = "red";
-      c.fillRect(10, 10, 50, 50);
-      c.fillStyle = "lime";
-      c.fillRect(70, 10, 50, 50);
-      return;
-    }
-
-    // Debug: draw visible test marks
-    c.fillStyle = "red";
-    c.fillRect(10, 10, 30, 30);
-    c.fillStyle = "lime";
-    c.fillRect(50, 10, 30, 30);
-    c.fillStyle = "blue";
-    c.fillRect(90, 10, 30, 30);
-
-    if (this.enemies.length === 0 && this.elapsed < 1) {
-      console.log("[Render] No enemies yet, elapsed:", this.elapsed.toFixed(2), "cam:", this.cam.x.toFixed(0), this.cam.y.toFixed(0));
-      // Debug info on canvas
-      c.fillStyle = "rgba(255,255,255,0.9)";
-      c.font = "16px monospace";
-      c.fillText(`Player: (${this.p.x.toFixed(0)}, ${this.p.y.toFixed(0)})`, 20, 60);
-      c.fillText(`Enemies: ${this.enemies.length} | Time: ${this.elapsed.toFixed(1)}s`, 20, 85);
-      c.fillText(`Cam: (${this.cam.x.toFixed(0)}, ${this.cam.y.toFixed(0)})`, 20, 110);
-      c.fillText(`Screen: ${this.sw}x${this.sh}`, 20, 135);
-    }
+    if (this.state === "menu" || this.state === "charSelect" || this.state === "shop" || this.state === "settings") return;
+    if (!this.cam || !this.p) return;
 
     const cx = this.cam.x, cy = this.cam.y;
     const toX = x => x - cx, toY = y => y - cy;
@@ -5564,11 +5530,7 @@ class Game {
 
     /* ── player ── */
     {
-      const sx = toX(this.p.x), sy = toY(this.p.y);
-      // Debug: huge visible test square at player position
-      c.fillStyle = "#ff0000";
-      c.fillRect(sx - 50, sy - 50, 100, 100);
-      c.save();
+      const sx = toX(this.p.x), sy = toY(this.p.y); c.save();
 
       // Glow effect when invincible or active power-ups
       if (this.p.invT > 0 || this.activePowerups.inv) {
