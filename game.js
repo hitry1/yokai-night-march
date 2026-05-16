@@ -6073,29 +6073,44 @@ class Game {
     const mw = 110, mh = 110, mx = this.sw - mw - 12, my = this.sh - mh - 12;
     const sx = mw / W, sy = mh / H;
     // Enhanced minimap with border and glow
-    c.fillStyle = "rgba(0,0,0,.6)"; c.fillRect(mx, my, mw, mh);
-    c.strokeStyle = "rgba(99,102,241,.4)"; c.lineWidth = 2; c.strokeRect(mx, my, mw, mh);
+    c.fillStyle = "rgba(0,0,0,.7)"; c.fillRect(mx, my, mw, mh);
+    c.strokeStyle = "rgba(99,102,241,.5)"; c.lineWidth = 2; c.strokeRect(mx, my, mw, mh);
+    // Compass directions
+    c.fillStyle = "rgba(255,255,255,.4)"; c.font = "8px sans-serif";
+    c.fillText("N", mx + mw / 2 - 3, my + 8);
     // Grid lines
     c.strokeStyle = "rgba(255,255,255,.05)"; c.lineWidth = 1;
     for (let i = 0; i <= 4; i++) {
       c.beginPath(); c.moveTo(mx + mw * i / 4, my); c.lineTo(mx + mw * i / 4, my + mh); c.stroke();
       c.beginPath(); c.moveTo(mx, my + mh * i / 4); c.lineTo(mx + mw, my + mh * i / 4); c.stroke();
     }
-    c.fillStyle = "rgba(239,83,80,.6)";
+    // Gems/XP dots
+    c.fillStyle = "rgba(76,175,80,.5)";
+    for (const g of this.gems) {
+      c.fillRect(mx + g.x * sx - 1.5, my + g.y * sy - 1.5, 3, 3);
+    }
+    // Gold coins
+    c.fillStyle = "rgba(255,217,61,.5)";
+    for (const gc of this.goldCoins) {
+      c.fillRect(mx + gc.x * sx - 1.5, my + gc.y * sy - 1.5, 3, 3);
+    }
+    // Enemy dots - show count limit for performance
     for (const e of this.enemies) {
-      const s = e.boss ? 5 : (e.elite ? 4 : 2.5);
+      const s = e.boss ? 5 : (e.elite ? 4 : 2);
       if (e.elite) c.fillStyle = "rgba(255,217,61,.9)";
       else if (e.boss) c.fillStyle = "rgba(240,98,146,.9)";
-      else c.fillStyle = "rgba(239,83,80,.6)";
+      else c.fillStyle = "rgba(239,83,80,.5)";
       c.fillRect(mx + e.x * sx - s / 2, my + e.y * sy - s / 2, s, s);
     }
-    // Player dot with glow
-    c.fillStyle = "#fff"; c.beginPath();
-    c.arc(mx + this.p.x * sx, my + this.p.y * sy, 4, 0, TAU); c.fill();
-    c.fillStyle = "rgba(99,102,241,.3)"; c.beginPath();
-    c.arc(mx + this.p.x * sx, my + this.p.y * sy, 6, 0, TAU); c.fill();
+    // Player dot with glow and direction indicator
+    const px = mx + this.p.x * sx, py = my + this.p.y * sy;
+    c.fillStyle = "rgba(99,102,241,.4)"; c.beginPath(); c.arc(px, py, 7, 0, TAU); c.fill();
+    c.fillStyle = "#fff"; c.beginPath(); c.arc(px, py, 4, 0, TAU); c.fill();
+    // Direction arrow
+    c.strokeStyle = "#fff"; c.lineWidth = 1.5;
+    c.beginPath(); c.moveTo(px, py); c.lineTo(px + cos(this.p.facing) * 8, py + sin(this.p.facing) * 8); c.stroke();
     // Viewport rectangle
-    c.strokeStyle = "rgba(255,255,255,.4)";
+    c.strokeStyle = "rgba(255,255,255,.3)"; c.lineWidth = 1;
     c.strokeRect(mx + this.cam.x * sx, my + this.cam.y * sy, this.sw * sx, this.sh * sy);
   }
 }
