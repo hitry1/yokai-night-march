@@ -2439,12 +2439,12 @@ class Game {
       for (const [id, e] of Object.entries(ETYPES)) {
         const card = document.createElement("div");
         card.className = "codex-card";
-        const typeLabel = e.boss ? "👑 보스" : (e.elite ? "⭐ 엘리트" : "👹");
+        const typeLabel = e.boss ? "👑 보스" : (e.elite ? "⭐ 엘리트" : "👹 普通");
         card.innerHTML = `
           <div class="codex-icon" style="color:${e.col}">${e.col.startsWith("#") ? "●" : "👹"}</div>
           <div class="codex-name">${e.name}</div>
           <div class="codex-desc">${typeLabel}</div>
-          <div class="codex-stats">HP: ${e.hp} | SPD: ${(e.spd*100).toFixed(0)}%</div>
+          <div class="codex-stats">HP: ${e.hp} | 공격: ${e.dmg} | 속도: ${(e.spd*100).toFixed(0)}%</div>
         `;
         box.appendChild(card);
       }
@@ -2453,11 +2453,15 @@ class Game {
       for (const [id, w] of Object.entries(WDEFS)) {
         const card = document.createElement("div");
         card.className = "codex-card";
+        const baseLv = w.lvs[0];
+        const dmg = baseLv.dmg || baseLv.dmgPerHit || "N/A";
+        const cd = baseLv.cd ? baseLv.cd + "ms" : (baseLv.spd ? "반복" : "N/A");
+        const special = w.attr === "yin" ? "❄️ 결빙" : (w.attr === "yang" ? "🔥 강공" : "");
         card.innerHTML = `
           <div class="codex-icon">${w.icon}</div>
           <div class="codex-name">${w.name}</div>
           <div class="codex-desc">${w.desc}</div>
-          <div class="codex-stats">DMG: ${w.dmg} | CD: ${w.cd}ms</div>
+          <div class="codex-stats">데미지: ${dmg} | 쿨타임: ${cd} ${special}</div>
         `;
         box.appendChild(card);
       }
