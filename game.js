@@ -4596,7 +4596,13 @@ class Game {
         el.textContent = def.icon;
         const lv = document.createElement("span");
         lv.className = "wslot-lv";
-        lv.textContent = w.lv + 1;
+        // Show evolution indicator for max level
+        if (w.lv >= 7) {
+          el.classList.add("evolved");
+          lv.textContent = "★";
+        } else {
+          lv.textContent = w.lv + 1;
+        }
         el.appendChild(lv);
       } else {
         el.textContent = "";
