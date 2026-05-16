@@ -292,17 +292,20 @@ class Sfx {
   powerupCollect() { this._t(0.1, 600, 1400, "sine", 0.12); setTimeout(() => this._t(0.1, 1000, 1800, "sine", 0.1), 100); setTimeout(() => this._t(0.15, 1400, 2200, "sine", 0.08), 200); }
   eliteSpawn() { this._t(0.15, 200, 600, "triangle", 0.12); setTimeout(() => this._t(0.15, 400, 800, "triangle", 0.1), 100); }
   wpn(t) {
-    if (t === "blade" || t === "ghostSlash") this._t(0.04, 320, 200, "sawtooth", 0.06);
-    else if (t === "fire" || t === "ghostFlame") this._n(0.06, 1100, 0.08);
-    else if (t === "lightning" || t === "thunderIce") this._t(0.03, 2200, 120, "square", 0.1);
-    else if (t === "frost") this._t(0.08, 800, 380, "triangle", 0.06);
-    else if (t === "curseMist") this._t(0.1, 180, 120, "triangle", 0.06);
-    else if (t === "aura") this._t(0.06, 160, 260, "sine", 0.04);
-    else if (t === "beads" || t === "divineWind") this._t(0.05, 700, 1100, "sine", 0.05);
-    else if (t === "windSpirit") this._n(0.08, 600, 0.07);
-    else if (t === "scythe" || t === "deathQuake") this._t(0.08, 180, 80, "sawtooth", 0.1);
-    else if (t === "quake") { this._n(0.12, 200, 0.14); this._t(0.08, 60, 30, "square", 0.08); }
-    else if (t === "trident" || t === "tidalStorm") this._t(0.06, 500, 900, "triangle", 0.08);
+    // Evolved weapons have distinct higher-pitched sounds
+    const evolvedSuffixes = ["inferno", "spiritBlaze", "thunderStorm", "frozenStorm", "blizzard", "shadowFog", "divineAura", "rosary", "hurricane", "galeForce", "grimReaper", "earthquake", "seismicWave", "seaKing", "tsunami"];
+    const isEvolved = evolvedSuffixes.some(s => t.includes(s));
+    if (t === "blade" || t === "ghostSlash") this._t(0.04, isEvolved ? 400 : 320, isEvolved ? 280 : 200, "sawtooth", isEvolved ? 0.08 : 0.06);
+    else if (t === "fire" || t === "inferno" || t === "ghostFlame" || t === "spiritBlaze") this._n(0.06, isEvolved ? 1400 : 1100, 0.08);
+    else if (t === "lightning" || t === "thunderStorm" || t === "thunderIce" || t === "frozenStorm") this._t(0.03, isEvolved ? 2800 : 2200, isEvolved ? 160 : 120, "square", 0.12);
+    else if (t === "frost" || t === "blizzard") this._t(0.08, isEvolved ? 1000 : 800, isEvolved ? 500 : 380, "triangle", 0.08);
+    else if (t === "curseMist" || t === "shadowFog") this._t(0.1, isEvolved ? 220 : 180, isEvolved ? 160 : 120, "triangle", 0.08);
+    else if (t === "aura" || t === "divineAura") this._t(0.06, isEvolved ? 200 : 160, isEvolved ? 340 : 260, "sine", 0.06);
+    else if (t === "beads" || t === "rosary" || t === "divineWind" || t === "hurricane") this._t(0.05, isEvolved ? 900 : 700, isEvolved ? 1400 : 1100, "sine", isEvolved ? 0.07 : 0.05);
+    else if (t === "windSpirit" || t === "galeForce") this._n(0.08, isEvolved ? 800 : 600, 0.09);
+    else if (t === "scythe" || t === "grimReaper" || t === "deathQuake" || t === "earthquake") this._t(0.08, isEvolved ? 220 : 180, isEvolved ? 100 : 80, "sawtooth", 0.12);
+    else if (t === "quake" || t === "seismicWave") { this._n(0.12, isEvolved ? 280 : 200, 0.16); this._t(0.08, isEvolved ? 80 : 60, isEvolved ? 40 : 30, "square", 0.1); }
+    else if (t === "trident" || t === "seaKing" || t === "tidalStorm" || t === "tsunami") this._t(0.06, isEvolved ? 650 : 500, isEvolved ? 1200 : 900, "triangle", 0.1);
   }
 
   bgmStart(type = "battleEarly") {
@@ -390,6 +393,8 @@ class VFX {
     this.pickups = [];
     this.weaponTrails = [];
     this.bloodSplats = [];
+    this.ringWaves = [];
+    this.lightningBolts = [];
   }
 
   reset() {
@@ -399,6 +404,8 @@ class VFX {
     this.pickups = [];
     this.weaponTrails = [];
     this.bloodSplats = [];
+    this.ringWaves = [];
+    this.lightningBolts = [];
     this.screenShake = { x: 0, y: 0, intensity: 0, decay: 0.9 };
   }
 
@@ -534,33 +541,48 @@ class VFX {
   /* ── WEAPON TRAILS ── */
   addWeaponTrail(x, y, weaponType, angle) {
     const colors = {
-      blade: "#b0bec5",
-      fire: "#ff9800",
-      ghostFlame: "#ff6d00",
-      lightning: "#00e5ff",
-      thunderIce: "#80deea",
-      frost: "#80deea",
-      curseMist: "#9c27b0",
-      aura: "#ce93d8",
-      beads: "#ffd54f",
-      divineWind: "#81c784",
-      windSpirit: "#b0bec5",
-      scythe: "#90a4ae",
-      deathQuake: "#78909c",
-      quake: "#8d6e63",
-      trident: "#4fc3f7",
-      tidalStorm: "#29b6f6",
+      blade: "#b0bec5", ghostSlash: "#c8e6c9",
+      fire: "#ff9800", inferno: "#ff5722",
+      ghostFlame: "#ff6d00", spiritBlaze: "#ff8a65",
+      lightning: "#00e5ff", thunderStorm: "#00bcd4",
+      thunderIce: "#80deea", frozenStorm: "#4dd0e1",
+      frost: "#80deea", blizzard: "#26c6da",
+      curseMist: "#9c27b0", shadowFog: "#ba68c8",
+      aura: "#ce93d8", divineAura: "#f48fb1",
+      beads: "#ffd54f", rosary: "#ffca28",
+      divineWind: "#81c784", hurricane: "#4caf50",
+      windSpirit: "#b0bec5", galeForce: "#cfd8dc",
+      scythe: "#90a4ae", grimReaper: "#78909c",
+      deathQuake: "#78909c", earthquake: "#8d6e63",
+      quake: "#8d6e63", seismicWave: "#a1887f",
+      trident: "#4fc3f7", seaKing: "#29b6f6",
+      tidalStorm: "#29b6f6", tsunami: "#03a9f4",
     };
+    // Check if evolved weapon
+    const isEvolved = !["blade", "fire", "ghostFlame", "lightning", "thunderIce", "frost", "curseMist", "aura", "beads", "divineWind", "windSpirit", "scythe", "deathQuake", "quake", "trident", "tidalStorm"].includes(weaponType);
+    const baseCol = colors[weaponType] || "#fff";
     const trail = {
       x, y,
       angle,
       weaponType,
       col: colors[weaponType] || "#fff",
-      life: 0.4,
-      maxLife: 0.4,
-      len: rand(25, 50),
-      width: rand(3, 8),
+      life: isEvolved ? 0.5 : 0.4,
+      maxLife: isEvolved ? 0.5 : 0.4,
+      len: isEvolved ? rand(40, 70) : rand(25, 50),
+      width: isEvolved ? rand(5, 12) : rand(3, 8),
+      isEvolved,
     };
+    // Add main trail with glow for evolved weapons
+    if (isEvolved) {
+      // Outer glow trail
+      this.weaponTrails.push({
+        ...trail,
+        col: baseCol + "40",
+        life: trail.life * 0.8,
+        len: trail.len * 1.3,
+        width: trail.width * 1.5,
+      });
+    }
     // Add multiple trail segments for richer effect
     this.weaponTrails.push(trail);
     // Add secondary trail
@@ -616,6 +638,75 @@ class VFX {
         life: rand(0.3, 0.8), maxLife: 0.8,
         r: rand(3, 8), col: color, grav: rand(-50, 50),
         fade: true, blend: "lighter",
+      });
+    }
+    // Add ring wave for explosions
+    this.ringWaves.push({
+      x, y, r: 5, maxR: 80, life: 0.4, maxLife: 0.4, col: color
+    });
+  }
+
+  /* ── RING WAVE EFFECT (expanding circle) ── */
+  addRingWave(x, y, color, maxRadius = 100) {
+    this.ringWaves.push({
+      x, y, r: 5, maxR: maxRadius, life: 0.5, maxLife: 0.5, col: color
+    });
+  }
+
+  /* ── SPARKLE BURST (for critical hits) ── */
+  addSparkleBurst(x, y, color = "#ffd700", count = 15) {
+    for (let i = 0; i < count; i++) {
+      const a = rand(0, TAU), spd = rand(80, 200);
+      this.particles.push({
+        x, y, vx: cos(a) * spd, vy: sin(a) * spd - 30,
+        life: rand(0.4, 0.8), maxLife: 0.8, r: rand(1, 3),
+        col: color, grav: -80, fade: true, blend: "lighter", sparkle: true,
+      });
+    }
+    this.shake(4, 0.6);
+  }
+
+  /* ── SHIELD BREAK EFFECT ── */
+  addShieldBreak(x, y) {
+    for (let i = 0; i < 20; i++) {
+      const a = rand(0, TAU), spd = rand(60, 150);
+      this.particles.push({
+        x, y, vx: cos(a) * spd, vy: sin(a) * spd,
+        life: rand(0.4, 0.7), maxLife: 0.7, r: rand(2, 5),
+        col: "#42a5f5", grav: 50, fade: true,
+      });
+    }
+    this.addRingWave(x, y, "#42a5f5", 60);
+    this.shake(6, 0.5);
+  }
+
+  /* ── POISON CLOUD EFFECT ── */
+  addPoisonCloud(x, y) {
+    for (let i = 0; i < 8; i++) {
+      const ox = rand(-20, 20), oy = rand(-20, 20);
+      this.particles.push({
+        x: x + ox, y: y + oy, vx: rand(-10, 10), vy: rand(-5, 5),
+        life: rand(0.8, 1.2), maxLife: 1.2, r: rand(8, 15),
+        col: "rgba(76, 175, 80, 0.4)", grav: 0, fade: true,
+      });
+    }
+  }
+
+  /* ── LIGHTNING STRIKE EFFECT ── */
+  addLightningEffect(x1, y1, x2, y2, color = "#00e5ff") {
+    this.lightningBolts.push({
+      x1, y1, x2, y2, life: 0.15, maxLife: 0.15, col: color
+    });
+  }
+
+  /* ── DOT EFFECT (damage over time) ── */
+  addDotEffect(x, y, color = "#ef5350") {
+    for (let i = 0; i < 3; i++) {
+      this.particles.push({
+        x: x + rand(-5, 5), y: y + rand(-5, 5),
+        vx: rand(-20, 20), vy: rand(-30, -10),
+        life: rand(0.3, 0.5), maxLife: 0.5, r: rand(1, 3),
+        col: color, grav: 20, fade: true,
       });
     }
   }
@@ -684,6 +775,17 @@ class VFX {
     this.updatePickups(dt);
     this.updateWeaponTrails(dt);
     this.updateBloodSplats(dt);
+    // Update ring waves
+    this.ringWaves = this.ringWaves.filter(r => {
+      r.life -= dt;
+      r.r += (r.maxR / r.maxLife) * dt * 2;
+      return r.life > 0;
+    });
+    // Update lightning bolts
+    this.lightningBolts = this.lightningBolts.filter(l => {
+      l.life -= dt;
+      return l.life > 0;
+    });
   }
 }
 
@@ -1717,6 +1819,8 @@ class Game {
     this.sfx = new Sfx();
     this.vfx = new VFX(); // Visual effects system
     this.keys = {}; this.touch = { active: false, dx: 0, dy: 0 };
+    this.ambientSpirits = []; this.ambientFog = []; this.ambientDust = [];
+    this.playerTrail = []; // Movement trail
     this.state = "menu";
     this.isMobile = "ontouchstart" in window;
     this.selectedChar = "exorcist";
@@ -1748,7 +1852,24 @@ class Game {
   _hideLoading() {
     const loadingScreen = document.getElementById("loading-screen");
     const loadingBar = document.getElementById("loading-bar");
+    const loadingTip = document.getElementById("loading-tip");
     if (loadingBar) loadingBar.style.width = "100%";
+    // Show random tip
+    if (loadingTip) {
+      const tips = [
+        "WASD 또는 방향키로 이동하세요",
+        "무기는 자동으로 공격합니다",
+        "레벨업 시 능력치를 선택하세요",
+        "진화 무기는 더 강한 위력을집니다",
+        "적의 공격을 피하며 플레이하세요",
+        "잡은 골드로 영구 강화가 가능합니다",
+        "캐릭터를 바꿔보면 다른 재미가 있습니다",
+        "엘리트 적을 처치하면 좋은 보상이 있습니다",
+        "보스战에서 집중하세요!",
+        "콤보 系统으로 더 많은 보상을 받으세요",
+      ];
+      loadingTip.textContent = "💡 " + tips[Math.floor(Math.random() * tips.length)];
+    }
     setTimeout(() => {
       if (loadingScreen) loadingScreen.classList.add("hidden");
     }, 300);
@@ -2927,8 +3048,14 @@ class Game {
     this.talismans = []; this.talismanT = 0;
     this.goldCoins = []; this.chests = [];
     this.windBursts = []; this.scytheSlashes = [];
-    // Ambient floating spirits
+    // Ambient floating spirits (enhanced with multiple types)
     this.ambientSpirits = [];
+    // Mystical fog particles
+    this.ambientFog = [];
+    // Floating dust motes
+    this.ambientDust = [];
+    // Player movement trail
+    this.playerTrail = [];
     this.xp = 0; this.level = 1; this.xpNext = 10;
     this.elapsed = 0; this.killCount = 0; this.totalDmg = 0;
     this.goldEarned = 0; this.damageTaken = 0;
@@ -3004,7 +3131,7 @@ class Game {
     this.elapsed += dt;
 
     // Spawn ambient spirits periodically (floating fireflies)
-    if (this.ambientSpirits.length < 15 && Math.random() < 0.02) {
+    if (this.ambientSpirits.length < 20 && Math.random() < 0.02) {
       this.ambientSpirits.push({
         x: rand(50, W - 50), y: rand(50, H - 50),
         vx: rand(-5, 5), vy: rand(-3, 3),
@@ -3028,6 +3155,66 @@ class Game {
       if (s.y < 20) s.vy += 5;
       if (s.y > H - 20) s.vy -= 5;
       return s.life > 0;
+    });
+
+    // Spawn mystical fog (larger, slower particles)
+    if (this.ambientFog.length < 8 && Math.random() < 0.005) {
+      this.ambientFog.push({
+        x: Math.random() > 0.5 ? rand(0, W * 0.3) : rand(W * 0.7, W),
+        y: rand(50, H - 50),
+        vx: rand(3, 8) * (Math.random() > 0.5 ? 1 : -1),
+        vy: rand(-2, 2),
+        r: rand(30, 60),
+        life: rand(12, 20),
+        maxLife: rand(12, 20),
+        col: Math.random() > 0.5 ? "rgba(100, 149, 237, 0.15)" : "rgba(147, 112, 219, 0.12)",
+        phase: rand(0, TAU),
+      });
+    }
+    // Update mystical fog
+    this.ambientFog = this.ambientFog.filter(f => {
+      f.life -= dt;
+      f.x += f.vx * dt;
+      f.y += f.vy * dt + sin(this.elapsed * 0.5 + f.phase) * 0.3;
+      // Keep in bounds and recycle
+      if (f.vx > 0 && f.x > W + 100) f.x = -100;
+      if (f.vx < 0 && f.x < -100) f.x = W + 100;
+      if (f.y < 30) f.y = H - 30;
+      if (f.y > H - 30) f.y = 30;
+      return f.life > 0;
+    });
+
+    // Spawn floating dust motes
+    if (this.ambientDust.length < 25 && Math.random() < 0.03) {
+      this.ambientDust.push({
+        x: rand(20, W - 20), y: rand(20, H - 20),
+        vx: rand(-3, 3),
+        vy: rand(-1, 1),
+        r: rand(1, 2),
+        life: rand(5, 10),
+        maxLife: rand(5, 10),
+        col: Math.random() > 0.3 ? "rgba(255, 255, 255, 0.4)" : "rgba(255, 215, 0, 0.3)",
+        phase: rand(0, TAU),
+      });
+    }
+    // Update floating dust
+    this.ambientDust = this.ambientDust.filter(d => {
+      d.life -= dt;
+      d.x += d.vx * dt;
+      d.y += d.vy * dt + sin(this.elapsed * 2 + d.phase) * 0.2;
+      // Wrap around edges
+      if (d.x < 0) d.x = W;
+      if (d.x > W) d.x = 0;
+      if (d.y < 0) d.y = H;
+      if (d.y > H) d.y = 0;
+      return d.life > 0;
+    });
+
+    // Update player movement trail
+    this.playerTrail = this.playerTrail.filter(t => {
+      t.life -= dt;
+      t.r *= 0.96; // Shrink over time
+      return t.life > 0;
     });
 
     // BGM cooldown
@@ -3071,6 +3258,18 @@ class Game {
       this.p.x = clamp(this.p.x + nx * this.p.spd * dt * 60, this.p.r, W - this.p.r);
       this.p.y = clamp(this.p.y + ny * this.p.spd * dt * 60, this.p.r, H - this.p.r);
       this.p.facing = atan2(ny, nx);
+      // Add movement trail
+      if (Math.random() < 0.3) {
+        const charTrailColors = {
+          exorcist: "#ef5350", shaman: "#ab47bc", taoist: "#42a5f5",
+          hunter: "#66bb6a", monk: "#ff9800", foxSpirit: "#ec407a"
+        };
+        this.playerTrail.push({
+          x: this.p.x + rand(-3, 3), y: this.p.y + rand(-3, 3),
+          r: rand(3, 6), life: 0.4, maxLife: 0.4,
+          col: charTrailColors[this.selectedChar] || "#ffd54f"
+        });
+      }
     }
 
     /* allure pull */
@@ -3282,6 +3481,10 @@ class Game {
       summonT: 0, allureT: 0,
       dotT: 0, dotDmg: 0, dotDur: 0,
     });
+    // Spawn effect for regular enemies (not boss/elite)
+    if (def && !def.boss && !def.elite) {
+      this.vfx.addRingWave(x, y, def.col || "#888", 30);
+    }
   }
 
   _spawnElite(dt) {
@@ -3299,7 +3502,7 @@ class Game {
       this._eliteIdx++;
       this._spawnEnemy(etype, x, y, this.elapsed / 60);
       this.announcements.push({ text: eliteNames[etype] || "⚠️ 엘리트 출현!", life: 2.5, maxLife: 2.5 });
-      this.sfx.boss();
+      this.sfx.eliteSpawn();
     }
   }
 
@@ -3343,12 +3546,14 @@ class Game {
       summonT: 0, allureT: 0,
       dotT: 0, dotDmg: 0, dotDur: 0,
     });
-    this.sfx.boss(); this._shake(12, 0.5);
+    this.sfx.boss(); this._shake(15, 0.6);
     // Screen flash for boss spawn
-    this._flashScreen("boss", 0.3);
-    // VFX: boss spawn explosion
-    this.vfx.addParticle(x, y, { vx: rand(-150, 150), vy: rand(-150, 150), life: 1.2, count: 25, col: "#ffd700", r: rand(4, 8), grav: 80 });
-    this.vfx.addHitSpark(x, y, "#ffd700", 20);
+    this._flashScreen("boss", 0.5);
+    // VFX: boss spawn explosion - enhanced
+    this.vfx.addParticle(x, y, { vx: rand(-200, 200), vy: rand(-200, 200), life: 1.5, count: 40, col: "#ffd700", r: rand(5, 12), grav: 60 });
+    this.vfx.addHitSpark(x, y, "#ffd700", 30);
+    // Ring shockwave effect
+    this.vfx.addExplosion(x, y, "#ff9800", 25);
     this.announcements.push({ text: "🦊 구미호 출현!", life: 3, maxLife: 3 });
   }
 
@@ -3448,6 +3653,8 @@ class Game {
       this.lightnings.push({ x1: this.p.x, y1: this.p.y, x2: e.x, y2: e.y, t: 0.2 });
       // Impact sparks
       this.vfx.addExplosion(e.x, e.y, "#00e5ff", 10);
+      this.vfx.addHitSpark(e.x, e.y, "#00e5ff", 8);
+      this.vfx.addRingWave(e.x, e.y, "#00e5ff", 25);
       inR.splice(idx, 1);
     }
   }
@@ -3463,6 +3670,8 @@ class Game {
       this.lightnings.push({ x1: this.p.x, y1: this.p.y, x2: e.x, y2: e.y, t: 0.2, col: "#4dd0e1" });
       e.frozenT = lv.frzT; e.frozenD = lv.frzD; e.frozenR = lv.frzR;
       this.vfx.addExplosion(e.x, e.y, "#4dd0e1", 8);
+      this.vfx.addHitSpark(e.x, e.y, "#4dd0e1", 6);
+      this.vfx.addRingWave(e.x, e.y, "#4dd0e1", 20);
       inR.splice(idx, 1);
     }
   }
@@ -4110,6 +4319,13 @@ class Game {
       this.sfx.combo();
       // Screen shake at high combos
       if (c >= 20) this.vfx.shake(c >= 50 ? 6 : 4, 0.2);
+      // Combo burst particle effect
+      const comboColors = { 5: "#4caf50", 10: "#2196f3", 20: "#ff9800", 50: "#f44336" };
+      this.vfx.addParticle(this.p.x, this.p.y, {
+        vx: rand(-150, 150), vy: rand(-150, 150), life: 0.8, count: c >= 20 ? 20 : 10,
+        col: comboColors[c] || "#fff", r: rand(3, 8), grav: 0
+      });
+      this.vfx.addRingWave(this.p.x, this.p.y, comboColors[c] || "#fff", c >= 50 ? 80 : 50);
     }
     this._spawnComboText(c);
     this._updateComboUI();
@@ -4122,12 +4338,14 @@ class Game {
       saveGachaData(gachaData);
       // Enhanced kill effects for elite/boss
       this.sfx.kill();
-      this._spawnParticles(e.x, e.y, e.boss ? 35 : 20, e.boss ? "#ffd700" : "#ff9800");
+      // More dramatic effects for boss/-elite
+      const killColor = e.boss ? "#ffd700" : (e.elite ? "#ff9800" : e.col || "#fff");
+      this._spawnParticles(e.x, e.y, e.boss ? 35 : 20, killColor);
       // VFX: kill particles
       this.vfx.addParticle(e.x, e.y, {
         vx: rand(-100, 100), vy: rand(-150, -50),
         life: 0.8, count: e.boss ? 20 : 10,
-        col: e.boss ? "#ffd700" : "#ff9800", r: rand(3, 8), grav: 200
+        col: killColor, r: rand(3, 8), grav: 200
       });
       // VFX: kill damage number
       this.vfx.addDamage(e.x, e.y - e.r - 20, 0, false, true);
@@ -4136,9 +4354,9 @@ class Game {
       // Screen shake (using VFX)
       this.vfx.shake(e.boss ? 12 : 6, 0.85);
       this._shake(e.boss ? 10 : 5, e.boss ? 0.3 : 0.15);
-      // Ring effect for boss kills
-      if (e.boss) {
-        this.lightnings.push({ x: e.x, y: e.y, r: 0, maxR: 100, life: 0.4, maxLife: 0.4, col: "#ffd700" });
+      // Ring effect for boss/elite kills
+      if (e.boss || e.elite) {
+        this.vfx.addRingWave(e.x, e.y, killColor, e.boss ? 100 : 60);
       }
     } else {
       this.sfx.kill();
@@ -4426,6 +4644,13 @@ class Game {
 
     // Apply or refresh buff
     this.activePowerups[def.effect] = { timer: def.dur, val: def.val, col: def.col, icon: def.icon, name: def.name };
+
+    // Powerup collection effects
+    this.sfx.powerupCollect();
+    this.vfx.addParticle(x, y, { vx: rand(-50, 50), vy: rand(-80, -20), life: 0.6, count: 12, col: def.col || "#ffd700", r: rand(3, 7), grav: 100 });
+    this.vfx.addRingWave(x, y, def.col || "#ffd700", 40);
+    this.vfx.shake(3, 0.5);
+    this._flashScreen("levelup", 0.15);
 
     // Show notification
     this.dmgNums.push({ x: this.p.x, y: this.p.y - 35, txt: def.icon + " " + def.name, col: def.col, life: 1.2, maxLife: 1.2, a: 1, big: true });
@@ -5121,13 +5346,16 @@ class Game {
     const p = this.p;
     const hpPercent = p.hp / p.maxHp;
     this.ui.hpBar.style.width = (hpPercent * 100) + "%";
-    // HP bar color based on health percentage
+    // HP bar color based on health percentage + critical warning
     if (hpPercent < 0.3) {
       this.ui.hpBar.style.background = "linear-gradient(90deg, #f44336, #ef5350)";
+      this.ui.hpWrap.classList.add("critical");
     } else if (hpPercent < 0.6) {
       this.ui.hpBar.style.background = "linear-gradient(90deg, #ff9800, #ffb74d)";
+      this.ui.hpWrap.classList.remove("critical");
     } else {
       this.ui.hpBar.style.background = "linear-gradient(90deg, #4caf50, #81c784)";
+      this.ui.hpWrap.classList.remove("critical");
     }
     this.ui.hpTxt.textContent = Math.ceil(p.hp) + " / " + p.maxHp;
     this.ui.xpBar.style.width = (this.xp / this.xpNext * 100) + "%";
@@ -5151,13 +5379,28 @@ class Game {
         this.ui.bossHpWrap.classList.remove("hidden");
         const bossHpPercent = boss.hp / boss.maxHp;
         this.ui.bossHpBar.style.width = (bossHpPercent * 100) + "%";
-        // Update boss HP bar color based on remaining health
-        if (bossHpPercent < 0.3) {
+        // Update boss HP bar color based on remaining health + critical effect
+        if (bossHpPercent < 0.2) {
           this.ui.bossHpBar.style.background = "linear-gradient(90deg, #f44336, #ef5350)";
+          this.ui.bossHpWrap.classList.add("critical");
+        } else if (bossHpPercent < 0.3) {
+          this.ui.bossHpBar.style.background = "linear-gradient(90deg, #f44336, #ef5350)";
+          this.ui.bossHpWrap.classList.remove("critical");
         } else if (bossHpPercent < 0.6) {
           this.ui.bossHpBar.style.background = "linear-gradient(90deg, #ff9800, #ffb74d)";
+          this.ui.bossHpWrap.classList.remove("critical");
         } else {
           this.ui.bossHpBar.style.background = "linear-gradient(90deg, #f06292, #e91e63)";
+          this.ui.bossHpWrap.classList.remove("critical");
+        }
+        // Update boss name in label
+        const bossNameEl = this.ui.bossHpWrap.querySelector(".boss-hp-label");
+        if (bossNameEl) {
+          const bossNames = { gumiho: "🦊 구미호", dokkaKing: "👺 도깨비왕", haetae: "🦁 해태", imugi: "🐉 이무기", yokaiLord: "👹 요괴왕" };
+          let nameText = bossNames[boss.type] || "🦊 보스";
+          // Add enraged indicator at low HP
+          if (bossHpPercent < 0.25) nameText = "💢 " + nameText + " (분노)";
+          bossNameEl.textContent = nameText;
         }
       } else {
         this.ui.bossHpWrap.classList.add("hidden");
@@ -5404,6 +5647,48 @@ class Game {
       /* elite glow */
       if (e.elite) {
         c.shadowColor = "#ffd93d"; c.shadowBlur = 16;
+      }
+      /* boss aura effect */
+      if (e.boss) {
+        c.save();
+        // Rotating aura ring
+        const auraPulse = 0.4 + sin(this.elapsed * 3) * 0.2;
+        c.globalAlpha = auraPulse;
+        c.strokeStyle = e.col || "#f06292";
+        c.lineWidth = 3;
+        c.shadowColor = e.col || "#f06292";
+        c.shadowBlur = 20;
+        const auraR = e.r + 15 + sin(this.elapsed * 2) * 5;
+        c.beginPath();
+        for (let i = 0; i < 3; i++) {
+          const startA = (this.elapsed * 1.5 + i * TAU / 3) % TAU;
+          const endA = startA + PI * 0.4;
+          c.arc(sx, sy, auraR, startA, endA);
+        }
+        c.stroke();
+        // Inner glow
+        c.globalAlpha = 0.15;
+        c.fillStyle = e.col || "#f06292";
+        c.beginPath(); c.arc(sx, sy, e.r + 8, 0, TAU); c.fill();
+        c.restore();
+
+        // Low HP enraged effect (when boss below 25%)
+        const bossHpRatio = e.hp / e.maxHp;
+        if (bossHpRatio < 0.25) {
+          c.save();
+          // Flashing red aura
+          const flashAlpha = 0.3 + Math.abs(sin(this.elapsed * 8)) * 0.3;
+          c.globalAlpha = flashAlpha;
+          c.strokeStyle = "#f44336";
+          c.lineWidth = 4;
+          c.shadowColor = "#f44336";
+          c.shadowBlur = 25;
+          c.beginPath(); c.arc(sx, sy, e.r + 20 + sin(this.elapsed * 5) * 5, 0, TAU); c.stroke();
+          // Angry eyes effect
+          c.fillStyle = "#f44336";
+          c.beginPath(); c.arc(sx - e.r * 0.3, sy - e.r * 0.1, 4, 0, TAU); c.arc(sx + e.r * 0.3, sy - e.r * 0.1, 4, 0, TAU); c.fill();
+          c.restore();
+        }
       }
 
       if (e.type === "wisp") {
@@ -5780,12 +6065,28 @@ class Game {
     if (blW) {
       const def = getWDef(blW.type), bLv = def.lvs[blW.lv], step = TAU / bLv.cnt;
       const bCol = blW.type === "ghostSlash" ? "#a5d6a7" : "#ffd54f";
+      const isEvolved = blW.lv >= def.maxLv - 1;
+      // Evolved weapon glow effect
+      if (isEvolved) {
+        c.save();
+        c.globalAlpha = 0.15 + sin(this.elapsed * 4) * 0.1;
+        c.fillStyle = bCol;
+        c.shadowColor = bCol;
+        c.shadowBlur = 25;
+        c.beginPath(); c.arc(toX(this.p.x), toY(this.p.y), bLv.rad + 10 + sin(this.elapsed * 2) * 5, 0, TAU); c.fill();
+        c.restore();
+      }
       for (let i = 0; i < bLv.cnt; i++) {
         const a = this.bladeAngle + step * i;
         const bx = toX(this.p.x + cos(a) * bLv.rad), by = toY(this.p.y + sin(a) * bLv.rad);
         c.save(); c.translate(bx, by); c.rotate(a + PI / 2);
-        c.fillStyle = bCol; c.shadowColor = bCol; c.shadowBlur = 8;
-        c.beginPath(); c.moveTo(0, -14); c.lineTo(-5, 0); c.lineTo(0, 7); c.lineTo(5, 0); c.closePath(); c.fill();
+        c.fillStyle = bCol; c.shadowColor = bCol; c.shadowBlur = isEvolved ? 15 : 8;
+        // Larger shape for evolved
+        if (isEvolved) {
+          c.beginPath(); c.moveTo(0, -18); c.lineTo(-7, 0); c.lineTo(0, 9); c.lineTo(7, 0); c.closePath(); c.fill();
+        } else {
+          c.beginPath(); c.moveTo(0, -14); c.lineTo(-5, 0); c.lineTo(0, 7); c.lineTo(5, 0); c.closePath(); c.fill();
+        }
         c.restore();
       }
     }
@@ -5795,16 +6096,33 @@ class Game {
     if (bdW) {
       const def = getWDef(bdW.type), bLv = def.lvs[bdW.lv], step = TAU / bLv.cnt;
       const bCol = bdW.type === "divineWind" ? "#fff176" : "#ffcc80";
+      const isEvolved = bdW.lv >= def.maxLv - 1;
+      // Evolved weapon aura
+      if (isEvolved) {
+        c.save();
+        c.globalAlpha = 0.12 + sin(this.elapsed * 3) * 0.08;
+        c.fillStyle = bCol;
+        c.shadowColor = bCol;
+        c.shadowBlur = 20;
+        c.beginPath(); c.arc(toX(this.p.x), toY(this.p.y), bLv.rad + 8 + sin(this.elapsed * 2) * 4, 0, TAU); c.fill();
+        c.restore();
+      }
       for (let i = 0; i < bLv.cnt; i++) {
         const a = this.beadsAngle + step * i;
         const bx = toX(this.p.x + cos(a) * bLv.rad), by = toY(this.p.y + sin(a) * bLv.rad);
-        c.save(); c.fillStyle = bCol; c.shadowColor = bCol; c.shadowBlur = 10;
-        c.beginPath(); c.arc(bx, by, 6, 0, TAU); c.fill();
+        const beadSize = isEvolved ? 8 : 6;
+        c.save(); c.fillStyle = bCol; c.shadowColor = bCol; c.shadowBlur = isEvolved ? 14 : 10;
+        c.beginPath(); c.arc(bx, by, beadSize, 0, TAU); c.fill();
+        // Inner glow for evolved
+        if (isEvolved) {
+          c.globalAlpha = 0.5;
+          c.beginPath(); c.arc(bx, by, beadSize * 0.6, 0, TAU); c.fill();
+        }
         /* trail for divineWind */
         if (bdW.type === "divineWind") {
           c.globalAlpha = 0.3;
           const prevA = a - step * 0.15;
-          c.beginPath(); c.arc(toX(this.p.x + cos(prevA) * bLv.rad), toY(this.p.y + sin(prevA) * bLv.rad), 4, 0, TAU); c.fill();
+          c.beginPath(); c.arc(toX(this.p.x + cos(prevA) * bLv.rad), toY(this.p.y + sin(prevA) * bLv.rad), isEvolved ? 5 : 4, 0, TAU); c.fill();
         }
         c.restore();
       }
@@ -5877,6 +6195,39 @@ class Game {
     }
     c.globalAlpha = 1;
 
+    /* ── mystical fog ── */
+    for (const f of this.ambientFog) {
+      const fade = (f.life / f.maxLife);
+      const wave = 1 + sin(this.elapsed * 0.8 + f.phase) * 0.15;
+      c.globalAlpha = fade * 0.25;
+      c.fillStyle = f.col;
+      c.beginPath();
+      c.ellipse(toX(f.x), toY(f.y), f.r * wave, f.r * 0.6 * wave, 0, 0, TAU);
+      c.fill();
+    }
+    c.globalAlpha = 1;
+
+    /* ── floating dust motes ── */
+    for (const d of this.ambientDust) {
+      const twinkle = 0.4 + sin(this.elapsed * 5 + d.phase) * 0.3;
+      c.globalAlpha = twinkle * (d.life / d.maxLife) * 0.6;
+      c.fillStyle = d.col;
+      c.beginPath(); c.arc(toX(d.x), toY(d.y), d.r, 0, TAU); c.fill();
+    }
+    c.globalAlpha = 1;
+
+    /* ── player movement trail ── */
+    for (const t of this.playerTrail) {
+      const alpha = (t.life / t.maxLife) * 0.6;
+      c.globalAlpha = alpha;
+      c.fillStyle = t.col;
+      c.shadowColor = t.col;
+      c.shadowBlur = 8;
+      c.beginPath(); c.arc(toX(t.x), toY(t.y), t.r, 0, TAU); c.fill();
+    }
+    c.globalAlpha = 1;
+    c.shadowBlur = 0;
+
     /* ── player ── */
     {
       const sx = toX(this.p.x), sy = toY(this.p.y); c.save();
@@ -5913,9 +6264,92 @@ class Game {
         c.shadowColor = auraColor; c.shadowBlur = auraBlur;
       }
 
-      c.beginPath(); c.arc(sx, sy, this.p.r, 0, TAU);
+      // Character-specific base shapes
+      const charShapes = {
+        exorcist: "circle",
+        shaman: "diamond",
+        taoist: "hexagon",
+        hunter: "triangle",
+        monk: "square",
+        foxSpirit: "star",
+      };
+      const shape = charShapes[this.selectedChar] || "circle";
       const flash = this.p.flashT > 0, blink = this.p.invT > 0 && floor(this.p.invT * 12) % 2 === 0;
-      c.fillStyle = flash ? "#ff5252" : blink ? "rgba(255,213,79,.4)" : "#fafafa"; c.fill(); c.restore();
+      const baseColor = flash ? "#ff5252" : blink ? "rgba(255,213,79,.4)" : "#fafafa";
+
+      // Draw character with unique shape
+      c.beginPath();
+      if (shape === "circle") {
+        c.arc(sx, sy, this.p.r, 0, TAU);
+      } else if (shape === "diamond") {
+        c.moveTo(sx, sy - this.p.r);
+        c.lineTo(sx + this.p.r, sy);
+        c.lineTo(sx, sy + this.p.r);
+        c.lineTo(sx - this.p.r, sy);
+        c.closePath();
+      } else if (shape === "hexagon") {
+        for (let i = 0; i < 6; i++) {
+          const a = (i * TAU / 6) - PI / 2;
+          const px = sx + cos(a) * this.p.r;
+          const py = sy + sin(a) * this.p.r;
+          if (i === 0) c.moveTo(px, py); else c.lineTo(px, py);
+        }
+        c.closePath();
+      } else if (shape === "triangle") {
+        c.moveTo(sx, sy - this.p.r);
+        c.lineTo(sx + this.p.r * 0.9, sy + this.p.r * 0.8);
+        c.lineTo(sx - this.p.r * 0.9, sy + this.p.r * 0.8);
+        c.closePath();
+      } else if (shape === "square") {
+        c.rect(sx - this.p.r * 0.8, sy - this.p.r * 0.8, this.p.r * 1.6, this.p.r * 1.6);
+      } else if (shape === "star") {
+        for (let i = 0; i < 8; i++) {
+          const a = (i * TAU / 8) - PI / 2;
+          const r = i % 2 === 0 ? this.p.r : this.p.r * 0.5;
+          const px = sx + cos(a) * r;
+          const py = sy + sin(a) * r;
+          if (i === 0) c.moveTo(px, py); else c.lineTo(px, py);
+        }
+        c.closePath();
+      }
+      c.fillStyle = baseColor; c.fill();
+
+      // Character-specific visual details
+      if (!flash && !blink) {
+        c.save();
+        const charDetails = {
+          exorcist: () => { // Red sash
+            c.strokeStyle = "#c62828"; c.lineWidth = 3;
+            c.beginPath(); c.moveTo(sx - this.p.r * 0.3, sy - this.p.r * 0.2); c.lineTo(sx + this.p.r * 0.5, sy + this.p.r * 0.3); c.stroke();
+          },
+          shaman: () => { // Purple headpiece
+            c.fillStyle = "#ab47bc";
+            c.beginPath(); c.arc(sx, sy - this.p.r * 0.7, this.p.r * 0.4, PI, 0); c.fill();
+            c.fillStyle = "#ffd700";
+            c.beginPath(); c.arc(sx, sy - this.p.r * 0.9, 3, 0, TAU); c.fill();
+          },
+          taoist: () => { // Blue scroll/belt
+            c.fillStyle = "#1976d2";
+            c.fillRect(sx - this.p.r * 0.6, sy + this.p.r * 0.1, this.p.r * 1.2, this.p.r * 0.15);
+          },
+          hunter: () => { // Green quiver
+            c.fillStyle = "#388e3c";
+            c.beginPath(); c.arc(sx + this.p.r * 0.5, sy - this.p.r * 0.3, this.p.r * 0.3, 0, TAU); c.fill();
+          },
+          monk: () => { // Orange robe trim
+            c.strokeStyle = "#f57c00"; c.lineWidth = 2;
+            c.beginPath(); c.arc(sx, sy, this.p.r * 0.8, PI * 0.2, PI * 0.8); c.stroke();
+          },
+          foxSpirit: () => { // Fox ears
+            c.fillStyle = "#ec407a";
+            c.beginPath(); c.moveTo(sx - this.p.r * 0.5, sy - this.p.r * 0.6); c.lineTo(sx - this.p.r * 0.7, sy - this.p.r * 1.1); c.lineTo(sx - this.p.r * 0.2, sy - this.p.r * 0.7); c.fill();
+            c.beginPath(); c.moveTo(sx + this.p.r * 0.5, sy - this.p.r * 0.6); c.lineTo(sx + this.p.r * 0.7, sy - this.p.r * 1.1); c.lineTo(sx + this.p.r * 0.2, sy - this.p.r * 0.7); c.fill();
+          },
+        };
+        if (charDetails[this.selectedChar]) charDetails[this.selectedChar]();
+        c.restore();
+      }
+      c.restore();
 
       // Power-up active indicator rings
       if (this.activePowerups.speed) {
@@ -5953,6 +6387,21 @@ class Game {
       const hbColors = { exorcist: "#d32f2f", shaman: "#7b1fa2", taoist: "#1565c0", hunter: "#2e7d32", monk: "#ff6f00", foxSpirit: "#f06292", reaper: "#6a1b9a", mountainGod: "#5d4037", seaDiver: "#0277bd" };
       c.fillStyle = hbColors[this.selectedChar] || "#d32f2f";
       c.fillRect(sx - this.p.r * 0.8, sy - this.p.r * 0.7, this.p.r * 1.6, 3);
+
+      // Character-specific aura particles
+      if (this.elapsed > 1 && Math.random() < 0.15) {
+        const charParticleColors = {
+          exorcist: "#ef5350", shaman: "#ab47bc", taoist: "#42a5f5",
+          hunter: "#66bb6a", monk: "#ff9800", foxSpirit: "#ec407a"
+        };
+        const pCol = charParticleColors[this.selectedChar] || "#ffd54f";
+        this.vfx.particles.push({
+          x: this.p.x + rand(-10, 10), y: this.p.y + rand(-10, 10),
+          vx: rand(-20, 20), vy: rand(-30, -10),
+          life: 0.5, maxLife: 0.5, r: rand(2, 4),
+          col: pCol, grav: 50, fade: true
+        });
+      }
       /* facing arrow */
       c.fillStyle = "#ffd54f"; c.beginPath();
       const fa = this.p.facing;
@@ -5992,9 +6441,25 @@ class Game {
     /* ── VFX: weapon trails ── */
     for (const t of this.vfx.weaponTrails) {
       const alpha = t.life / t.maxLife;
+      const isEvolved = t.isEvolved;
+      // Add glow for evolved weapons
+      if (isEvolved) {
+        c.globalAlpha = alpha * 0.3;
+        c.strokeStyle = t.col;
+        c.lineWidth = (t.width || 8) * 2 * alpha;
+        c.lineCap = "round";
+        c.shadowColor = t.col;
+        c.shadowBlur = 15;
+        c.beginPath();
+        const tx = toX(t.x), ty = toY(t.y);
+        const tailX = tx - cos(t.angle) * t.len * 1.2;
+        const tailY = ty - sin(t.angle) * t.len * 1.2;
+        c.moveTo(tailX, tailY); c.lineTo(tx, ty); c.stroke();
+        c.shadowBlur = 0;
+      }
       c.globalAlpha = alpha * 0.6;
       c.strokeStyle = t.col;
-      c.lineWidth = 4 * alpha;
+      c.lineWidth = (t.width || 4) * alpha;
       c.lineCap = "round";
       c.beginPath();
       const tx = toX(t.x), ty = toY(t.y);
@@ -6030,6 +6495,45 @@ class Game {
       c.fillStyle = "#b71c1c";
       c.beginPath();
       c.arc(toX(b.x), toY(b.y), b.size * 3, 0, TAU); c.fill();
+    }
+
+    c.globalAlpha = 1;
+
+    /* ── VFX: ring waves ── */
+    for (const r of this.vfx.ringWaves) {
+      const alpha = (r.life / r.maxLife) * 0.6;
+      c.globalAlpha = alpha;
+      c.strokeStyle = r.col;
+      c.lineWidth = 3 * alpha;
+      c.shadowColor = r.col;
+      c.shadowBlur = 10;
+      c.beginPath();
+      c.arc(toX(r.x), toY(r.y), r.r, 0, TAU);
+      c.stroke();
+      c.shadowBlur = 0;
+    }
+
+    /* ── VFX: lightning bolts ── */
+    for (const l of this.vfx.lightningBolts) {
+      const alpha = l.life / l.maxLife;
+      c.globalAlpha = alpha;
+      c.strokeStyle = l.col;
+      c.lineWidth = 3;
+      c.shadowColor = l.col;
+      c.shadowBlur = 15;
+      c.beginPath();
+      c.moveTo(toX(l.x1), toY(l.y1));
+      // Draw jagged lightning line
+      const dx = l.x2 - l.x1, dy = l.y2 - l.y1;
+      const steps = 5;
+      for (let i = 1; i < steps; i++) {
+        const t = i / steps;
+        const jitter = (i === steps - 1) ? 0 : rand(-15, 15);
+        c.lineTo(toX(l.x1 + dx * t + jitter), toY(l.y1 + dy * t + jitter));
+      }
+      c.lineTo(toX(l.x2), toY(l.y2));
+      c.stroke();
+      c.shadowBlur = 0;
     }
 
     c.globalAlpha = 1;
@@ -6112,6 +6616,21 @@ class Game {
     // Viewport rectangle
     c.strokeStyle = "rgba(255,255,255,.3)"; c.lineWidth = 1;
     c.strokeRect(mx + this.cam.x * sx, my + this.cam.y * sy, this.sw * sx, this.sh * sy);
+
+    /* ── atmospheric overlay ── */
+    // Subtle vignette effect
+    const cx2 = sw / 2, cy2 = sh / 2, maxDist = sqrt(cx2 * cx2 + cy2 * cy2);
+    const vignette = c.createRadialGradient(cx2, cy2, maxDist * 0.5, cx2, cy2, maxDist);
+    vignette.addColorStop(0, "rgba(0,0,0,0)");
+    vignette.addColorStop(0.7, "rgba(0,0,0,0.1)");
+    vignette.addColorStop(1, "rgba(0,0,0,0.35)");
+    c.fillStyle = vignette; c.fillRect(0, 0, sw, sh);
+
+    // Time-based color tint (subtle shift from blue to purple over game time)
+    const timeFactor = Math.min(this.elapsed / 600, 1); // Gradual shift over 10 minutes
+    const tintAlpha = 0.03 + timeFactor * 0.02;
+    c.fillStyle = `rgba(100, 50, 150, ${tintAlpha})`;
+    c.fillRect(0, 0, sw, sh);
   }
 }
 
