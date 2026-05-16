@@ -2945,7 +2945,9 @@ class Game {
 
   /* ── START GAME ── */
   _startGame() {
+    console.log("[Game] _startGame START", new Date().toISOString());
     console.log("[Game] _startGame called, selectedChar:", this.selectedChar);
+    console.log("[Game] W=", W, "H=", H, "this.sw=", this.sw, "this.sh=", this.sh);
     this._firstUpdate = true;
     // Safety check - if no character selected, use default
     if (!this.selectedChar || !CHARACTERS[this.selectedChar]) {
@@ -3141,7 +3143,7 @@ class Game {
     this._initialBgmPlayed = false;
     this._bgmCooldown = 0;
     this._refreshWeaponSlots();
-    console.log("[Game] _startGame COMPLETE. cam:", !!this.cam, "p:", !!this.p);
+    console.log("[Game] _startGame COMPLETE!", "cam:", !!this.cam, "p:", !!this.p, "p.x:", this.p?.x, "p.y:", this.p?.y, "cam.x:", this.cam?.x, "cam.y:", this.cam?.y);
   }
 
   _addWeapon(type) { this.weapons.push({ type, lv: 0, lastFire: 0, hitMap: new Map() }); }
@@ -3156,7 +3158,7 @@ class Game {
       const now = performance.now();
       if (this.state === "play") {
         if (!this.cam || !this.p) {
-          console.log("RAF: play state but no cam/p, calling _startGame");
+          console.log("RAF: play state but no cam/p, calling _startGame", new Date().toISOString());
           this._startGame();
         }
         const dt = min((now - this.lastT) / 1000, 0.05); this.lastT = now; this._update(dt);
@@ -5462,8 +5464,12 @@ class Game {
     c.clearRect(0, 0, sw, sh);
     if (this.state === "menu" || this.state === "charSelect" || this.state === "shop" || this.state === "settings") return;
     if (!this.cam || !this.p) {
-      console.log("DEBUG: cam/p not ready, state=", this.state);
+      // Early return if player not ready
+      console.log("RENDER: cam/p not ready, state=", this.state);
       return;
+    } else {
+      // Debug: log player position
+      console.log("RENDER: state=", this.state, "p.x=", Math.round(this.p.x), "p.y=", Math.round(this.p.y), "cam.x=", Math.round(this.cam.x), "cam.y=", Math.round(this.cam.y));
     }
 
     const cx = this.cam.x, cy = this.cam.y;
