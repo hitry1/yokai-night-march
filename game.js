@@ -286,6 +286,11 @@ class Sfx {
   pickup() { this._t(0.06, 1000, 1500, "sine", 0.07); }
   revive() { this._t(0.3, 300, 800, "sine", 0.15); setTimeout(() => this._t(0.3, 500, 1200, "sine", 0.12), 150); setTimeout(() => this._t(0.4, 700, 1600, "sine", 0.1), 300); }
   combo() { this._t(0.08, 800, 1400, "triangle", 0.1); setTimeout(() => this._t(0.08, 1200, 1800, "triangle", 0.08), 80); }
+  evolution() { this._t(0.2, 400, 1800, "sine", 0.2); setTimeout(() => this._t(0.2, 600, 2200, "sine", 0.18), 150); setTimeout(() => this._t(0.3, 800, 2600, "sine", 0.15), 300); setTimeout(() => this._t(0.4, 1200, 3000, "sine", 0.12), 450); }
+  bossHit() { this._n(0.08, 180, 0.2); this._t(0.1, 150, 80, "square", 0.15); }
+  bossDeath() { this._t(0.5, 400, 60, "sawtooth", 0.25); setTimeout(() => this._t(0.6, 300, 40, "sawtooth", 0.22), 300); setTimeout(() => this._t(0.8, 200, 30, "sawtooth", 0.18), 600); }
+  powerupCollect() { this._t(0.1, 600, 1400, "sine", 0.12); setTimeout(() => this._t(0.1, 1000, 1800, "sine", 0.1), 100); setTimeout(() => this._t(0.15, 1400, 2200, "sine", 0.08), 200); }
+  eliteSpawn() { this._t(0.15, 200, 600, "triangle", 0.12); setTimeout(() => this._t(0.15, 400, 800, "triangle", 0.1), 100); }
   wpn(t) {
     if (t === "blade" || t === "ghostSlash") this._t(0.04, 320, 200, "sawtooth", 0.06);
     else if (t === "fire" || t === "ghostFlame") this._n(0.06, 1100, 0.08);
@@ -546,14 +551,25 @@ class VFX {
       trident: "#4fc3f7",
       tidalStorm: "#29b6f6",
     };
-    this.weaponTrails.push({
+    const trail = {
       x, y,
       angle,
       weaponType,
       col: colors[weaponType] || "#fff",
+      life: 0.4,
+      maxLife: 0.4,
+      len: rand(25, 50),
+      width: rand(3, 8),
+    };
+    // Add multiple trail segments for richer effect
+    this.weaponTrails.push(trail);
+    // Add secondary trail
+    this.weaponTrails.push({
+      ...trail,
+      col: colors[weaponType] ? colors[weaponType] + "80" : "#ffffff80",
       life: 0.3,
-      maxLife: 0.3,
-      len: rand(20, 40),
+      len: trail.len * 0.7,
+      width: trail.width * 0.5,
     });
   }
 
