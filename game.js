@@ -3106,12 +3106,6 @@ class Game {
   _addWeapon(type) { this.weapons.push({ type, lv: 0, lastFire: 0, hitMap: new Map() }); }
   _pause() { this.state = "pause"; this.ui.pause.classList.remove("hidden"); }
   _unpause() {
-    // If player not initialized, restart game
-    if (!this.cam || !this.p) {
-      console.log("[Game] Player not initialized on resume, calling _startGame");
-      this._startGame();
-      return;
-    }
     this.state = "play"; this.ui.pause.classList.add("hidden"); this.lastT = performance.now();
   }
 
@@ -5423,14 +5417,7 @@ class Game {
     c.clearRect(0, 0, sw, sh);
     if (this.state === "menu" || this.state === "charSelect" || this.state === "shop" || this.state === "settings") return;
     if (!this.cam || !this.p) {
-      // Debug: show what's happening - make it bigger and more visible
-      c.fillStyle = "rgba(255,0,0,0.3)"; c.fillRect(0, 0, sw, sh);
-      c.fillStyle = "yellow"; c.font = "bold 24px sans-serif";
-      c.fillText("PROBLEM: cam=" + !!this.cam + " p=" + !!this.p, 20, 40);
-      c.fillText("State=" + this.state, 20, 70);
-      c.font = "16px sans-serif";
-      c.fillText("Press ESC to pause/resume to fix", 20, 100);
-      console.log("DEBUG: state=", this.state, "cam=", this.cam, "p=", this.p);
+      console.log("DEBUG: cam/p not ready, state=", this.state);
       return;
     }
 
@@ -5439,8 +5426,8 @@ class Game {
 
     /* ── background (map-aware) ── */
     const mapD = this.mapDef || MAPS.bamboo;
-    c.fillStyle = "#1a2a1a"; c.fillRect(0, 0, sw, sh);
-    const gs = 60; c.strokeStyle = "rgba(80,160,100,.15)"; c.lineWidth = 1;
+    c.fillStyle = mapD.bg || "#081210"; c.fillRect(0, 0, sw, sh);
+    const gs = 60; c.strokeStyle = mapD.gridCol || "rgba(80,160,100,.04)"; c.lineWidth = 1;
     const ox = -(cx % gs), oy = -(cy % gs);
     c.beginPath();
     for (let x = ox; x < sw; x += gs) { c.moveTo(x, 0); c.lineTo(x, sh); }
@@ -5658,7 +5645,6 @@ class Game {
     }
 
     /* ── enemies (skip off-screen for perf) ── */
-    c.fillStyle = "cyan"; c.font = "12px sans-serif"; c.fillText("Enemies: " + this.enemies.length, 10, 40);
     for (const e of this.enemies) {
       const sx = toX(e.x), sy = toY(e.y);
       if (sx < -50 || sx > sw + 50 || sy < -50 || sy > sh + 50) continue;
@@ -6287,9 +6273,7 @@ class Game {
       // Draw player as simple circle (original rendering)
       const flash = this.p.flashT > 0, blink = this.p.invT > 0 && floor(this.p.invT * 12) % 2 === 0;
       c.beginPath(); c.arc(sx, sy, this.p.r, 0, TAU);
-      c.fillStyle = flash ? "#ff5252" : blink ? "rgba(255,213,79,.4)" : "#00ff00"; c.fill();
-      // Debug: draw player position in corner
-      c.fillStyle = "red"; c.font = "12px sans-serif"; c.fillText("P: " + Math.round(sx) + "," + Math.round(sy), 10, 20);
+      c.fillStyle = flash ? "#ff5252" : blink ? "rgba(255,213,79,.4)" : "#fafafa"; c.fill();
 
       // Character-specific visual details
       if (!flash && !blink) {
