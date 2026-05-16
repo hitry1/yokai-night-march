@@ -3403,8 +3403,10 @@ class Game {
     for (let i = 0; i < lv.cnt; i++) {
       const a = this.bladeAngle + step * i;
       const bx = this.p.x + cos(a) * lv.rad, by = this.p.y + sin(a) * lv.rad;
-      // VFX: weapon trail
+      // VFX: weapon trail and particles
       this.vfx.addWeaponTrail(bx, by, w.type, a);
+      // Blade sparkle effect
+      this.vfx.addHitSpark(bx, by, "#ffd54f", 3);
       for (const e of this.enemies) {
         if (sqrt((bx - e.x) ** 2 + (by - e.y) ** 2) < e.r + 10 && !w.hitMap.has(e.id)) {
           w.hitMap.set(e.id, this.elapsed);
@@ -3437,12 +3439,15 @@ class Game {
     const cd = lv.cd * this.p.cdMul; if (now - w.lastFire < cd) return; w.lastFire = now;
     const inR = this.enemies.filter(e => dist(e, this.p) < 350); if (!inR.length) return;
     this.sfx.wpn("lightning");
-    // Lightning visual effect
-    this.vfx.addParticle(this.p.x, this.p.y, { vx: rand(-30, 30), vy: rand(-30, 30), life: 0.4, count: 5, col: "#00e5ff", r: rand(3, 6) });
+    // Lightning visual effect with explosion
+    this.vfx.addParticle(this.p.x, this.p.y, { vx: rand(-30, 30), vy: rand(-30, 30), life: 0.4, count: 8, col: "#00e5ff", r: rand(3, 6), blend: "lighter" });
+    this.vfx.addMagicAura(this.p.x, this.p.y, "#00e5ff", 30);
     for (let i = 0; i < lv.st && inR.length > 0; i++) {
       const idx = rInt(0, inR.length - 1), e = inR[idx];
       this._damageEnemy(e, lv.dmg);
       this.lightnings.push({ x1: this.p.x, y1: this.p.y, x2: e.x, y2: e.y, t: 0.2 });
+      // Impact sparks
+      this.vfx.addExplosion(e.x, e.y, "#00e5ff", 10);
       inR.splice(idx, 1);
     }
   }
@@ -3451,11 +3456,13 @@ class Game {
     const cd = lv.cd * this.p.cdMul; if (now - w.lastFire < cd) return; w.lastFire = now;
     const inR = this.enemies.filter(e => dist(e, this.p) < 350); if (!inR.length) return;
     this.sfx.wpn("thunderIce");
+    this.vfx.addParticle(this.p.x, this.p.y, { vx: rand(-30, 30), vy: rand(-30, 30), life: 0.5, count: 8, col: "#80deea", r: rand(3, 6), blend: "lighter" });
     for (let i = 0; i < lv.st && inR.length > 0; i++) {
       const idx = rInt(0, inR.length - 1), e = inR[idx];
       this._damageEnemy(e, lv.dmg);
       this.lightnings.push({ x1: this.p.x, y1: this.p.y, x2: e.x, y2: e.y, t: 0.2, col: "#4dd0e1" });
       e.frozenT = lv.frzT; e.frozenD = lv.frzD; e.frozenR = lv.frzR;
+      this.vfx.addExplosion(e.x, e.y, "#4dd0e1", 8);
       inR.splice(idx, 1);
     }
   }
