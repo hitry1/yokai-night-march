@@ -2617,6 +2617,8 @@ class Game {
 
   /* ── START GAME ── */
   _startGame() {
+    console.log("[Game] _startGame called, selectedChar:", this.selectedChar);
+    this._firstUpdate = true;
     // Safety check - if no character selected, use default
     if (!this.selectedChar || !CHARACTERS[this.selectedChar]) {
       console.warn("No character selected, using exorcist");
@@ -2826,6 +2828,7 @@ class Game {
 
   /* ═══════════════════ UPDATE ═══════════════════ */
   _update(dt) {
+    if (this._firstUpdate) { console.log("[Game] First _update, elapsed:", this.elapsed.toFixed(2), "enemies:", this.enemies.length); this._firstUpdate = false; }
     this.elapsed += dt;
 
     // Spawn ambient spirits periodically (floating fireflies)
