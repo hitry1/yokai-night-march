@@ -3112,8 +3112,10 @@ class Game {
   /* ── RAF ── */
   _raf() {
     try {
+      console.log("RAF: state=", this.state, "has cam:", !!this.cam, "has p:", !!this.p);
       const now = performance.now();
       if (this.state === "play") {
+        console.log("  -> update running, dt calculated");
         const dt = min((now - this.lastT) / 1000, 0.05); this.lastT = now; this._update(dt);
       } else this.lastT = now;
       this._render();
