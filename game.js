@@ -2813,11 +2813,15 @@ class Game {
 
   /* ── RAF ── */
   _raf() {
-    const now = performance.now();
-    if (this.state === "play") {
-      const dt = min((now - this.lastT) / 1000, 0.05); this.lastT = now; this._update(dt);
-    } else this.lastT = now;
-    this._render();
+    try {
+      const now = performance.now();
+      if (this.state === "play") {
+        const dt = min((now - this.lastT) / 1000, 0.05); this.lastT = now; this._update(dt);
+      } else this.lastT = now;
+      this._render();
+    } catch (e) {
+      console.error("[Game] Error in game loop:", e);
+    }
     requestAnimationFrame(() => this._raf());
   }
 
